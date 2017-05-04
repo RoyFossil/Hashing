@@ -22,6 +22,8 @@ class Record:
 			sum+=ord(c)
 		return sum
 	
+	#returns the hash value that was originally sent in
+	#eg. will return a string or an int.
 	def getHashValue(self):
 		if not self.isDeleted():
 			if self.strKeys:

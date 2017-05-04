@@ -7,12 +7,9 @@ file = LinearlyHashedFile(256, 100, 10, 'C:/RF/test1', True)
 
 # file.insert(int(hashValue), recordValue)
 
-
-file.writeRecordToOverflow(2, None, 0)
-
-for i in range(1,30):
-	file.insert("test"+str(i), "test val")
-	file.search("test"+str(i))
+for i in range(1,10000):
+	file.insert("test" +str(i), "test val")
+	file.search(str(i))
 
 
 
