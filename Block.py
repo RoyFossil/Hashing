@@ -11,17 +11,95 @@ class Block:
 		self.bfr = bfr
 		self.data = data
 	
+	# returns the index of the available space within a block, -1 if full
 	def hasSpace(self):
 		for recNum in range(0, self.bfr):
 			aRecord = self.makeRecord(self.data[recNum*self.recordSize:(recNum+1)*self.recordSize])
 			if aRecord.isEmpty():
-				print("New Rec num:" + str(recNum))
+				#print("New Rec num:" + str(recNum))
 				return recNum
 		return -1
 	
+	# only to be used inside this class
+	# makes creating records easier and more clear
 	def makeRecord(self, data):
 		return Record(self.recordSize, self.fieldSize, data)
 		
+	# return pointer value
 	def getPointer(self):
-		# this is having an issue beacause we haven't actually written data to that part of the block yet... so it's just going out into memory and grabbing some random shit. pointer at the front of block instead? doable, but not as sexy. when writing a new block set all to null? possible. may need to just set pointer to null. the rest will fill in.
 		return int.from_bytes(self.data[(-1*self.pointerSize):], byteorder='big')
+	
+	# returns boolean value
+	def isEmpty(self):
+		for recNum in range(0, self.bfr):
+			aRecord = self.makeRecord(self.data[recNum*self.recordSize:(recNum+1)*self.recordSize])
+			if not aRecord.isEmpty():
+				return False
+		return True
+	
+	# returns an array of record objects
+	def getAllRecords(self):
+		records = []
+		for recNum in range(0, self.bfr):
+			aRecord = self.makeRecord(self.data[recNum*self.recordSize:(recNum+1)*self.recordSize])
+			if not aRecord.isEmpty():
+				records.append(aRecord)
+		return records
+	
+	# returns a dictionary of locations and record objects
+	def getAllRecordsWithLoc(self):
+		records = {}
+		i = 0
+		for recNum in range(0, self.bfr):
+			aRecord = self.makeRecord(self.data[recNum*self.recordSize:(recNum+1)*self.recordSize])
+			if not aRecord.isEmpty():
+				records[i] = aRecord
+			i += 1
+		return records
+	
+	def getAllRecordsInclDeleted(self):
+		records = []
+		for recNum in range(0, self.bfr):
+			aRecord = self.makeRecord(self.data[recNum*self.recordSize:(recNum+1)*self.recordSize])
+			if aRecord.getHashValueEvenIfDeleted():
+				records.append(aRecord)
+		return records
+	
+	# returns a record object 
+	def getRecordWithValue(self, value):
+		records = self.getAllRecords()
+		for record in records:
+			if record.getHashValue() == value:
+				return record
+	
+	def getRecordWithValueLoc(self, value):
+		records = self.getAllRecords()
+		i = 0
+		for record in records:
+			if record.getHashValue() == value:
+				return i
+			else:
+				i += 1
+	
+	def getRecordWithValueLocInclDeleted(self, value):
+		records = self.getAllRecordsInclDeleted()
+		i = 0
+		for record in records:
+			if record.getHashValueEvenIfDeleted() == value:
+				return i
+			else:
+				i += 1
+	
+	def containsRecordWithValue(self, value):
+		records = self.getAllRecords()
+		for record in records:
+			if record.getHashValue() == value:
+				return True
+		return False
+	
+	def containsRecordWithValueInclDeleted(self, value):
+		records = self.getAllRecordsInclDeleted()
+		for record in records:
+			if record.getHashValueEvenIfDeleted() == value:
+				return True
+		return False
