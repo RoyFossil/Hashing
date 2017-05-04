@@ -152,6 +152,7 @@ class LinearlyHashedFile:
 				for record in allRecords:
 					# use second hash function to deterimine which bucket
 					whichBucket = self.h2(record.getHashValueInt())
+					print("Which bucket: " + str(record.getHashValue()) +" - "+ str(whichBucket))
 					if whichBucket == self.n:
 						origBucketCount += 1
 						if origBucketCount > self.bfr:
@@ -161,7 +162,7 @@ class LinearlyHashedFile:
 							f.write(record.bytes)
 					else:
 						print("we in the new bucket dawg")
-						print(record.getData())
+						print(record.prettyPrint())
 						grabbedBucketCount += 1
 						if grabbedBucketCount > self.bfr:
 							print("there's needs to be a split within a split")
@@ -190,7 +191,7 @@ class LinearlyHashedFile:
 		# check to see if the secondary hash function needs to be used
 		if bucket < self.n:
 			bucket = self.h2(intValue)
-		# open the file as binary read and write
+		# open the file as binary read
 		with open(self.file, 'rb', buffering=self.blockSize) as f:
 			# navigate to the appropriate bucket
 			# plus 2 is to account for the header

@@ -12,26 +12,38 @@ class Record:
 		if type(value) is int:
 			bytes = value.to_bytes(fieldSize, byteorder='big') + b'\x00' + record.encode('UTF-8')
 		elif type(value) is str:
-			bytes = value.encode('UTF-8') + b'\x00' + record.encode('UTF-8')
+			bytes = value.encode('UTF-8') + b'\x00'*(fieldSize-len(value)) + b'\x00' + record.encode('UTF-8')
 		bytes = bytes + bytearray(size - len(bytes))
 		return cls(size, fieldSize, strKeys, bytes)
+	
+	def sumChars(self, string):
+		sum=0
+		for c in string:
+			sum+=ord(c)
+		return sum
 	
 	def getHashValue(self):
 		if not self.isDeleted():
 			if self.strKeys:
-				return self.bytes[0:self.fieldSize]
+				return (self.bytes[0:self.fieldSize]).rstrip(b'\x00').decode()
 			else:
 				return int.from_bytes(self.bytes[0:self.fieldSize], byteorder='big')
 	
 	def getHashValueInt(self):
 		if not self.isDeleted():
-			return int.from_bytes(self.bytes[0:self.fieldSize], byteorder='big')
+			if self.strKeys:
+				return self.sumChars(self.getHashValue())
+			else:
+				return int.from_bytes(self.bytes[0:self.fieldSize], byteorder='big')
 	
 	def getHashValueEvenIfDeleted(self):
-		return int.from_bytes(self.bytes[0:self.fieldSize], byteorder='big')
+		if self.strKeys:
+			return self.sumChars(self.getHashValue())
+		else:
+			return int.from_bytes(self.bytes[0:self.fieldSize], byteorder='big')
 		
 	def isEmpty(self):
-		return not self.getHashValue()
+		return not self.getHashValueInt()
 		
 	def getData(self):
 		return self.bytes[self.fieldSize + 1:]
