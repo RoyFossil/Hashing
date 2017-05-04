@@ -151,7 +151,7 @@ class LinearlyHashedFile:
 		# loop through all records
 		origBucketRecords=[]
 		grabbedBucketRecords=[]
-		grabbedBucketNum
+		grabbedBucketNum=0
 		for record in allRecords:
 			# use second hash function to deterimine which bucket
 			whichBucket = self.h2(record.getHashValueInt())
@@ -172,7 +172,7 @@ class LinearlyHashedFile:
 				mainFile.seek(self.blockSize*(self.n+2) + self.recordSize*(count - 1))
 				mainFile.write(record.bytes)
 			else:
-				self.writeRecordToOverflow(self.n, record)
+				self.writeRecordToOverflow(self.n, None, record)
 				needAnotherSplit=True
 				collisionBucket=self.n
 				
@@ -180,10 +180,10 @@ class LinearlyHashedFile:
 		for record in grabbedBucketRecords:
 			count+=1
 			if count <= self.bfr:
-				mainFile.seek(self.blockSize*(grabbedBucketNum)+2) + self.recordSize*(count - 1))
+				mainFile.seek(self.blockSize*(grabbedBucketNum+2) + self.recordSize*(count - 1))
 				mainFile.write(record.bytes)
 			else:
-				self.writeRecordToOverflow(grabbedBucketNum, record)
+				self.writeRecordToOverflow(grabbedBucketNum, None, record)
 				needAnotherSplit=True
 				collisionBucket=grabbedBucketNum
 		# at this point we have rehashed all records and put them in their appropriate buckets
@@ -193,7 +193,57 @@ class LinearlyHashedFile:
 		if needAnotherSplit:
 			self.split()
 		
-	def writeRecordToOverflow(self, bucketNum, origBucket, theRecord)
+	def writeRecordToOverflow(self, bucketNum, origBucket, theRecord):
+		with open(self.file, 'r+b') as mainFile:
+			if not origBucket:
+				mainFile.seek(self.blockSize*(bucketNum+2))
+			with open(self.overflow, 'r+b') as overflow:
+				# need to ignore the 0 pointer because that'll be null pointer
+				# but we don't want to waste the first block in overflow
+				# so we could subtract one? or maybe use first block for info
+				pointer = overflowingBucket.getPointer() - 1
+				# only if the pointer points to something, meaning that this block already has an overflow bucket assigned to it
+				if pointer >= 0:
+					# navigate to the block in overflow file
+					overflow.seek(self.blockSize*pointer)
+					# read the block
+					overflowBlock = self.makeBlock(overflow.read(self.blockSize))
+					# find a spot to put the record
+					overflowSpace = overflowBlock.hasSpace()
+					# if there's a spot
+					if overflowSpace>=0:
+						# put it in there! gotta move the pointer back cause we read the block
+						overflow.seek(self.blockSize*pointer + self.recordSize*overflowSpace)
+						overflow.write(theRecord.bytes)
+					else:
+						print("we're having an overflow... in the overflow. OVERFLOWCEPTION")
+					
+				# else the bucket doesn't already have an overflow bucket assigned to it. so we must make one.
+				else:
+					# but where do we make it?
+					# linear search through the overflow file? is that gross
+					i = 0
+					bucketFound = False
+					while bucketFound == False:
+						# navigate to ith bucket in overflow file
+						overflow.seek(i*self.blockSize)
+						# load bucket into memory
+						aBlock = self.makeBlock(overflow.read(self.blockSize))
+						if aBlock.isEmpty():
+							# found an empty bucket, end looping
+							bucketFound = True
+						else:
+							# bucket wasn't empty, check the next one
+							i += 1
+					# navigate to empty bucket
+					overflow.seek(self.blockSize*i)
+					# write the record there
+					overflow.write(theRecord.bytes)
+					# navigate to block in orig file
+					mainFile.seek(self.blockSize*(bucket+3) - self.blockPointerSize)
+					# update pointer value
+					# add one because we're using 1 based indexing
+					mainFile.write((i+1).to_bytes(self.blockPointerSize, byteorder='big'))
 	
 	def increment_n(self):
 		self.n += 1
