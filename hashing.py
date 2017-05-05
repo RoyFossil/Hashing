@@ -1,11 +1,12 @@
 from StaticlyHashedFile import *
-file=StaticlyHashedFile(256,100,1,'C:/LN/test1')
+file=StaticlyHashedFile(256,100,10,10,'C:/LN/test1')
 
 
 # file.numOfBlocksare()
-file.insert(60, "test val holy shit holy shit holy shittttt")
-file.search(19)
-
+# file.insert(60, "test val holy shit holy shit holy shittttt")
+# file.search(19)
+for i in range(1,30):
+	file.insert(int(i), "test val")		
 
 
 
