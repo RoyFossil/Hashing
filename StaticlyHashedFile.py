@@ -3,8 +3,7 @@ from Block import *
 import math
 
 class StaticlyHashedFile:
-	def __init__(self, blockSize, recordSize, fieldSize, fileLoc):
-		self.m = 1
+	def __init__(self, blockSize, recordSize, fieldSize,fileSize, fileLoc):
 		self.file = fileLoc
 		self.blockSize = blockSize
 		# record size supplied by user should include the hash field size
@@ -14,8 +13,12 @@ class StaticlyHashedFile:
 		# record size - (fieldSize + 1) and plus one is for deletion marker.
 		self.recordSize = recordSize
 		self.fieldSize = fieldSize
+		self.fileSize= fileSize
 		self.blockPointerSize = 4
 		self.bfr = math.floor((blockSize-self.blockPointerSize)/self.recordSize)
+		self.maxnoOfEntries= (self.bfr*fileSize)
+		self.noOfEntries=0
+		
 		# truncates the file
 		with open(self.file, 'wb') as f:
 			f.write(b"This is a shorter less ridiculous file header")
@@ -24,7 +27,7 @@ class StaticlyHashedFile:
 
 	
 	def h1(self, value):
-		return value % self.m
+		return value % self.fileSize
 	
 	def formatValue(self, value):
 		if type(value) is int:
@@ -39,54 +42,61 @@ class StaticlyHashedFile:
 		return sum
 	
 	def insert(self, value, record):
-	# used to accept strings
-		intValue = self.formatValue(value)
-		# pass value to first hash function
-		bucket = self.h1(intValue)
-		formattedRecord = Record.new(self.recordSize, self.fieldSize, value, record)
-		with open(self.file, 'r+b') as f:
-			# navigate to the appropriate bucket
-			# plus 2 is to account for the header
-			f.seek(self.blockSize*(bucket+2))
-			# check to see if data exists in this bucket
-			theBlock = self.makeBlock(f.read(self.blockSize))
-			space = theBlock.hasSpace()
-			if space>=0:
-				# spot was open, move pointer back
-				f.seek(self.blockSize*(bucket+2) + self.recordSize*space)
-				# slot data in there boiii
-				f.write(formattedRecord.bytes)
-			else:
-				# there has been a collision. handle it.
-				print("move to the next available space")
-				# check to see if data exists in the next avilable bucket
-				bucket+=1
-				# spot was open, move pointer back
-				f.seek(self.blockSize*(bucket+2) + self.recordSize*space)
-				# slot data in there boiii
-				f.write(formattedRecord.bytes)
+		if self.noOfEntries < self.maxnoOfEntries:
+			# used to accept strings
+			intValue = self.formatValue(value)
+			# pass value to first hash function
+			bucket = self.h1(intValue)
+			formattedRecord = Record.new(self.recordSize, self.fieldSize, value, record)
+			with open(self.file, 'r+b') as f:
+				# navigate to the appropriate bucket
+				# plus 2 is to account for the header
+				f.seek(self.blockSize*(bucket+2))
+				# check to see if data exists in this bucket
+				theBlock = self.makeBlock(f.read(self.blockSize))
+				space = theBlock.hasSpace()
+				if space>=0:
+					# spot was open, move pointer back
+					f.seek(self.blockSize*(bucket+2) + self.recordSize*space)
+					# slot data in there boiii
+					f.write(formattedRecord.bytes)
+				else:
+					# there has been a collision. handle it
+					print("move to the next available space")
+					# check to see if data exists in the next avilable bucket
+					bucket+=1
+					# spot was open, move pointer back
+					f.seek(self.blockSize*(bucket+2) + self.recordSize*space)
+					# slot data in there boiii
+					f.write(formattedRecord.bytes)
+			self.noOfEntries=self.noOfEntries+1
+		else:
+			print("nahhhh dude, file's full")
+		
 				
-	def search(self, value):	
-		bucket = self.h1(value)
-		with open(self.file, 'rb') as f:
-			# navigate to the appropriate bucket
-			# plus 2 is to account for the header
-			f.seek(self.blockSize*(bucket+2))
-			# load bucket into memory
-			theBlock = self.makeBlock(f.read(self.blockSize))
-			# currently only built to handle key values
-			if theBlock.containsRecordWithValue(value):
-				theRecord = theBlock.getRecordWithValue(value)
-				print(theRecord.bytes)
-			else:
-				print("search in the next available space")
-				# check to see if data exists in the next avilable bucket
-				bucket+=1
-				# spot was open, move pointer back
-				f.seek(self.blockSize*bucket)
-				print(theRecord.bytes)
-				# # slot data in there boiii
-				# f.write(formattedRecord.bytes)
+	# def search(self, value):	
+		# intValue = self.formatValue(value)
+		# bucket = self.h1(value)
+		# with open(self.file, 'rb') as f:
+			# # navigate to the appropriate bucket
+			# # plus 2 is to account for the header
+			# f.seek(self.blockSize*(bucket+2))
+			# # load bucket into memory
+			# theBlock = self.makeBlock(f.read(self.blockSize))
+			# # currently only built to handle key values
+			# if theBlock.containsRecordWithValue(value):
+				# theRecord = theBlock.getRecordWithValue(value)
+				# print(theRecord.bytes)
+			# else:
+				# print("search in the next available space")
+				# # check to see if data exists in the next avilable bucket
+				# bucket+=1
+				# # spot was open, move pointer back
+				# f.seek(self.blockSize*bucket)
+				# theRecord = theBlock.getRecordWithValue(value)
+				# print(theRecord.bytes)
+				# # # slot data in there boiii
+				# # f.write(formattedRecord.bytes)
 
 				
 	def makeBlock(self, data):
