@@ -76,7 +76,6 @@ class LinearlyHashedFile:
 				print("need a split yoooooo.  " +  str(formattedRecord.getHashValue()) + " did it.")
 				self.writeRecordToOverflow(bucket, theBlock, formattedRecord)
 				self.split(f)
-				# here is where we need to put the data into an overflow bucket
 				
 	
 	def split(self, mainFile):
@@ -91,8 +90,6 @@ class LinearlyHashedFile:
 		# see if it is pointing to anything
 		allRecords = []
 		while pointer >= 0:
-			# this method will only handle one overflow bucket per bucket in the original file
-			# eventually I should probably use some sort of list of overflow buckets.
 			with open(self.overflow, 'r+b') as overflow:
 				# navigate to bucket of interest
 				overflow.seek(self.blockSize*pointer)
@@ -103,7 +100,7 @@ class LinearlyHashedFile:
 				overflow.write(bytearray(self.blockSize))
 				allRecords.extend(ofBucketToBeSplit.getAllRecords())
 				# check to see if overflow bucket had a pointer as well
-				pointer = ofBucketToBeSplit.getPointer()
+				pointer = ofBucketToBeSplit.getPointer() - 1
 		allRecords.extend(bucketToBeSplit.getAllRecords())
 		# loop through all records
 		origBucketRecords=[]
@@ -112,12 +109,9 @@ class LinearlyHashedFile:
 		for record in allRecords:
 			# use second hash function to deterimine which bucket
 			whichBucket = self.h2(record.getHashValueInt())
-			print("Which bucket: " + str(record.getHashValue()) +" - "+ str(whichBucket))
 			if whichBucket == self.n:
 				origBucketRecords.append(record)
 			else:
-				print("we in the new bucket dawg")
-				print(record.prettyPrint())
 				grabbedBucketRecords.append(record)
 				grabbedBucketNum=whichBucket
 		
@@ -235,7 +229,7 @@ class LinearlyHashedFile:
 			# as they are based off of m
 			self.m = 2*self.m
 	
-	def utilSearchLoc(self, value):
+	def utilSearch(self, value, loc):
 		# used for accepting strings
 		intValue = self.formatValue(value)
 		# pass value to first hash function
@@ -253,7 +247,13 @@ class LinearlyHashedFile:
 			# currently only built to handle key values
 			if theBlock.containsRecordWithValue(value):
 				# load the record
-				loc = theBlock.getRecordWithValueLoc(value)
+				if loc:
+					main = True
+					blockLoc = bucket
+					recordLoc = theBlock.getRecordWithValueLoc(value)
+					return {"main": main, "blockLoc": blockLoc, "recordLoc": recordLoc}
+				else:
+					return theBlock.getRecordWithValue(value)
 				
 			else:
 				# record was not in main file
@@ -268,8 +268,14 @@ class LinearlyHashedFile:
 						ofBlock = self.makeBlock(overflow.read(self.blockSize))
 						# if its got the record
 						if ofBlock.containsRecordWithValue(value):
-							# then print it
-							ofBlock.getRecordWithValue(value).prettyPrint()
+							# then return it
+							if loc:
+								main = False
+								blockLoc = pointer
+								recordLoc = ofBlock.getRecordWithValueLoc(value)
+								return {"main": main, "blockLoc": blockLoc, "recordLoc": recordLoc}
+							else:
+								return ofBlock.getRecordWithValue(value)
 						else:
 							# else, check to see if this block points to another
 							pointer = ofBlock.getPointer() - 1
@@ -278,87 +284,21 @@ class LinearlyHashedFile:
 				return
 	
 	def search(self, value):
-		# used for accepting strings
-		intValue = self.formatValue(value)
-		# pass value to first hash function
-		bucket = self.h1(intValue)
-		# check to see if the secondary hash function needs to be used
-		if bucket < self.n:
-			bucket = self.h2(intValue)
-		# open the file as binary read
-		with open(self.file, 'rb', buffering=self.blockSize) as f:
-			# navigate to the appropriate bucket
-			# plus 2 is to account for the header
-			f.seek(self.blockSize*(bucket+2))
-			# load bucket into memory
-			theBlock = self.makeBlock(f.read(self.blockSize))
-			# currently only built to handle key values
-			if theBlock.containsRecordWithValue(value):
-				# load the record
-				theBlock.getRecordWithValue(value).prettyPrint()
-			else:
-				# record was not in main file
-				# get pointer to overflow bucket
-				pointer = theBlock.getPointer() - 1
-				while pointer >= 0:
-					# there is an overflow block to check
-					with open(self.overflow, 'rb', buffering=self.blockSize) as overflow:
-						# navigate to overflow block
-						overflow.seek(self.blockSize*pointer)
-						# read into memory
-						ofBlock = self.makeBlock(overflow.read(self.blockSize))
-						# if its got the record
-						if ofBlock.containsRecordWithValue(value):
-							# then print it
-							ofBlock.getRecordWithValue(value).prettyPrint()
-						else:
-							# else, check to see if this block points to another
-							pointer = ofBlock.getPointer() - 1
-				# there was no overflow block to check
-				print("Record not found")
-				return
+		self.utilSearch(value, False).prettyPrint()
 		
 	def update(self, value, data):
-		# used for accepting strings
-		intValue = self.formatValue(value)
-		# pass value to first hash function
-		bucket = self.h1(intValue)
-		# check to see if the secondary hash function needs to be used
-		if bucket < self.n:
-			bucket = self.h2(intValue)
 		# format the record to overwrite with
 		formattedRecord = Record.new(self.recordSize, self.fieldSize, self.strKeys, value, data)
-		# open the file as binary read and write
-		with open(self.file, 'r+b', buffering=self.blockSize) as f:
-			# navigate to the appropriate bucket
-			# plus 2 is to account for the header
-			f.seek(self.blockSize*(bucket+2))
-			# load bucket into memory
-			theBlock = self.makeBlock(f.read(self.blockSize))
-			# currently only built to handle key values
-			if theBlock.containsRecordWithValue(value):
-				# get record location
-				recLoc = theBlock.getRecordWithValueLoc(value)
-			else:
-				# record was not in main file
-				# get pointer to overflow bucket
-				pointer = theBlock.getPointer() - 1
-				if pointer >= 0:
-					# there is an overflow block to check
-					with open(self.overflow, 'rb', buffering=self.blockSize) as overflow:
-						overflow.seek(self.blockSize*pointer)
-						ofBlock = self.makeBlock(overflow.read(self.blockSize))
-						if ofBlock.containsRecordWithValue(value):
-							recLoc = ofBlock.getRecordWithValueLoc(value)
-						else:
-							print("Record not found")
-							return
-				else:
-					# there was no overflow block to check
-					print("Record not found")
-					return
+		recordInfo = self.utilSearch(value, True)
+		if recordInfo["main"]:
+			file = self.file
+			# add two blocks for header??
+			recordInfo["blockLoc"]+=2
+		else:
+			file = self.overflow
+		with open(file, 'r+b') as f:
 			# navigate to the record to be updated
-			f.seek(self.blockSize*(bucket+2) + self.recordSize*recLoc)
+			f.seek(self.blockSize*(recordInfo["blockLoc"]) + self.recordSize*recordInfo["recordLoc"])
 			# write over the old record with new formatted one
 			f.write(formattedRecord.bytes)
 			

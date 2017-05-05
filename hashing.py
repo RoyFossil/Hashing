@@ -1,17 +1,16 @@
 from LinearlyHashedFile import *
 
-file = LinearlyHashedFile(256, 100, 10, 'C:/RF/test1', True)
+file = LinearlyHashedFile(256, 100, 10, 'C:/RF/test1', False)
 
 # hashValue = input("Enter a hash value: ")
 # recordValue = input("Enter a string to store with that hash value: ")
 
 # file.insert(int(hashValue), recordValue)
-
-for i in range(1,10000):
-	file.insert("test" +str(i), "test val")
-	file.search(str(i))
-
-
+for i in range(50, 60):
+	file.insert(i, "here is " +str(i))
+	file.search(i)
+	file.update(i, "fuck " +str(i))
+	file.search(i)
 
 # for i in range(50, 500):
 	# print("n: " + str(file.n) + "   m: " + str(file.m))
