@@ -1,6 +1,7 @@
 from Record import *
 from LinearBlock import *
 import math
+from timeit import default_timer as timer
 
 class LinearlyHashedFile:
 	
@@ -18,6 +19,8 @@ class LinearlyHashedFile:
 		self.fieldSize = fieldSize
 		self.blockPointerSize = 4
 		self.bfr = math.floor((blockSize-self.blockPointerSize)/self.recordSize)
+		self.times = False
+		self.workings = False
 		if not (readFileArgs is None):
 			self.m = readFileArgs["m"]
 			self.n = readFileArgs["n"]
@@ -83,7 +86,15 @@ class LinearlyHashedFile:
 			f.write(self.numRecordsDeleted.to_bytes(3, byteorder='big'))
 			f.write(self.bfr.to_bytes(1, byteorder='big'))
 			f.write(self.numRecords.to_bytes(6, byteorder='big'))
-			
+	
+	# takes two boolean arguments
+	# time: print time to complete each operation
+	# working: print navigation and other info
+	# note: times will be artificially increased if working is on at the same time
+	# recommend picking either one or the other
+	def setStatistics(self, times, workings):
+		self.times = times
+		self.workings = workings
 	
 	def h1(self, value):
 		return value % self.m
@@ -104,6 +115,7 @@ class LinearlyHashedFile:
 		return sum
 	
 	def insert(self, value, record):
+		start = timer()
 		# used to accept strings
 		intValue = self.formatValue(value)
 		# pass value to first hash function
@@ -111,6 +123,9 @@ class LinearlyHashedFile:
 		# check to see if the secondary hash function needs to be used
 		if bucket < self.n:
 			bucket = self.h2(intValue)
+		if self.workings:
+			print(str(value) + " maps to bucket " + str(bucket))
+		
 		# format the record to be inserted
 		formattedRecord = Record.new(self.recordSize, self.fieldSize, self.strKeys, value, record)
 		# open the file as binary read and write
@@ -118,24 +133,36 @@ class LinearlyHashedFile:
 			# navigate to the appropriate bucket
 			# plus 2 is to account for the header
 			f.seek(self.blockSize*(bucket+2))
+			if self.workings:
+				print("Navigate to bucket " + str(bucket))
 			# check to see if data exists in this bucket
 			theBlock = self.makeBlock(f.read(self.blockSize))
 			space = theBlock.hasSpace()
 			if space>=0:
+				if self.workings:
+					print("Space " + str(space) + " is available in this bucket.")
 				# spot was open, move pointer back
 				f.seek(self.blockSize*(bucket+2) + self.recordSize*space)
 				# slot data in there boiii
 				f.write(formattedRecord.bytes)
+				if self.workings:
+					print("The record was inserted at record number " + str(space) + " in bucket " + str(bucket) + ".")
 				self.numRecords+=1
 			else:
 				# there has been a collision. handle it.
-				print("need a split yoooooo.  " +  str(formattedRecord.getHashValue()) + " did it.")
+				if self.workings:
+					print("The bucket is full, write the record to overflow.")
 				self.writeRecordToOverflow(bucket, theBlock, formattedRecord)
 				self.numRecords+=1
 				self.split(f)
+		end = timer()
+		if self.times:
+			print("Insert time: " + str((end-start)*1000) + "ms")
 				
 	
 	def split(self, mainFile):
+		if self.workings:
+			print("A split was initiated. Bucket " + str(self.n) + " will be split.")
 		# navigate to the bucket to be split
 		mainFile.seek(self.blockSize*(self.n+2))
 		# load bucket to memory
@@ -159,6 +186,8 @@ class LinearlyHashedFile:
 				# check to see if overflow bucket had a pointer as well
 				pointer = ofBucketToBeSplit.getPointer() - 1
 		allRecords.extend(bucketToBeSplit.getAllRecords())
+		if self.workings:
+			print(str(len(allRecords)) + " record(s) will be rehashed." )
 		# loop through all records
 		origBucketRecords=[]
 		grabbedBucketRecords=[]
@@ -180,9 +209,14 @@ class LinearlyHashedFile:
 				mainFile.seek(self.blockSize*(self.n+2) + self.recordSize*(count - 1))
 				mainFile.write(record.bytes)
 			else:
+				if self.workings:
+					print("There has been a collision in bucket " + str(self.n) + " during the splitting process.")
+					print("Write the offending record to overflow.")
 				self.writeRecordToOverflow(self.n, None, record)
 				needAnotherSplit=True
-				
+		if self.workings and count:
+			print(str(count) + " records rehashed to bucket " + str(self.n))
+		
 		count=0
 		for record in grabbedBucketRecords:
 			count+=1
@@ -190,8 +224,13 @@ class LinearlyHashedFile:
 				mainFile.seek(self.blockSize*(grabbedBucketNum+2) + self.recordSize*(count - 1))
 				mainFile.write(record.bytes)
 			else:
+				if self.workings:
+					print("There has been a collision in bucket " + str(grabbedBucketNum) + " during the splitting process.")
+					print("Write the offending record to overflow.")
 				self.writeRecordToOverflow(grabbedBucketNum, None, record)
 				needAnotherSplit=True
+		if self.workings and grabbedBucketNum:
+			print(str(count) + " records rehashed to bucket " + str(grabbedBucketNum))
 		# at this point we have rehashed all records and put them in their appropriate buckets
 		# now we need to update n and m and hash functions
 		
@@ -213,6 +252,8 @@ class LinearlyHashedFile:
 				pointer = origBucket.getPointer() - 1
 				# only if the pointer points to something, meaning that this block already has an overflow bucket assigned to it
 				if pointer >= 0:
+					if self.workings:
+						print("Bucket " + str(bucketNum) + " already points to overflow bucket " + str(pointer) + ".")
 					while True:
 						# navigate to the block in overflow file
 						overflow.seek(self.blockSize*pointer)
@@ -222,9 +263,13 @@ class LinearlyHashedFile:
 						overflowSpace = overflowBlock.hasSpace()
 						# if there's a spot
 						if overflowSpace>=0:
+							if self.workings:
+								print("There is space in overflow bucket " + str(pointer) + ".")
 							# put it in there! gotta move the pointer back cause we read the block
 							overflow.seek(self.blockSize*pointer + self.recordSize*overflowSpace)
 							overflow.write(theRecord.bytes)
+							if self.workings:
+								print("The record was inserted at record number " + str(overflowSpace) + " in bucket " + str(pointer) + " in the overflow file.")
 							break;
 						else:
 							print("we're having an overflow... in the overflow. OVERFLOWCEPTION")
@@ -249,10 +294,14 @@ class LinearlyHashedFile:
 				else:
 					# but where do we make it?
 					availableOFBucket = self.findNextAvailableOFBucket()
+					if self.workings:
+						print("Bucket " + str(bucketNum) + " in the main file now points to bucket " + str(availableOFBucket) + " in the overflow file.")
 					# navigate to empty bucket
 					overflow.seek(self.blockSize*availableOFBucket)
 					# write the record there
 					overflow.write(theRecord.bytes)
+					if self.workings:
+						print("The record was inserted at record number 0 in bucket " + str(availableOFBucket) + " in the overflow file.")
 					# navigate to block in orig file
 					mainFile.seek(self.blockSize*(bucketNum+3) - self.blockPointerSize)
 					# update pointer value
@@ -277,14 +326,20 @@ class LinearlyHashedFile:
 	
 	def increment_n(self):
 		self.n += 1
+		if self.workings:
+			print("Increment n. n=" + str(self.n))
 		# if n==m we need to reset
 		if self.n == self.m:
+			if self.workings:
+				print("n is equal to m so we must reset n and double m.")
 			# reset n to zero
 			self.n = 0
 			# set m to twice m
 			# this should update the hash functions as well
 			# as they are based off of m
 			self.m = 2*self.m
+			if self.workings:
+				print("n=" + str(self.n) + "  m=" + str(self.m))
 		with open(self.file, 'r+b') as f:
 			f.seek(0)
 			f.write(self.n.to_bytes(3, byteorder='big'))
@@ -299,15 +354,21 @@ class LinearlyHashedFile:
 		# check to see if the secondary hash function needs to be used
 		if bucket < self.n:
 			bucket = self.h2(intValue)
+		if self.workings:
+			print(str(value) + " maps to bucket " + str(bucket))
 		# open the file as binary read
 		with open(self.file, 'rb', buffering=self.blockSize) as f:
 			# navigate to the appropriate bucket
 			# plus 2 is to account for the header
 			f.seek(self.blockSize*(bucket+2))
+			if self.workings:
+				print("Navigate to bucket " + str(bucket))
 			# load bucket into memory
 			theBlock = self.makeBlock(f.read(self.blockSize))
 			# currently only built to handle key values
 			if searchDeleted and theBlock.containsRecordWithValueInclDeleted(value):
+				if self.workings:
+					print("Record found in bucket " + str(bucket))
 				if loc:
 					main = True
 					blockLoc = bucket
@@ -316,6 +377,8 @@ class LinearlyHashedFile:
 				else:
 					return theBlock.getRecordWithValueInclDeleted(value)
 			elif (not searchDeleted) and theBlock.containsRecordWithValue(value):
+				if self.workings:
+					print("Record found in bucket " + str(bucket))
 				# load the record
 				if loc:
 					main = True
@@ -327,6 +390,8 @@ class LinearlyHashedFile:
 				
 			else:
 				# record was not in main file
+				if self.workings:
+					print("Record was not found in main file. Check overflow.")
 				# get pointer to overflow bucket
 				pointer = theBlock.getPointer() - 1
 				while pointer >= 0:
@@ -338,6 +403,8 @@ class LinearlyHashedFile:
 						ofBlock = self.makeBlock(overflow.read(self.blockSize))
 						# if its got the record
 						if searchDeleted and ofBlock.containsRecordWithValueInclDeleted(value):
+							if self.workings:
+								print("Record found in bucket " + str(bucket) + " in the overflow file")
 							if loc:
 								main = False
 								blockLoc = pointer
@@ -346,6 +413,8 @@ class LinearlyHashedFile:
 							else:
 								return ofBlock.getRecordWithValueInclDeleted(value)
 						elif (not searchDeleted) and ofBlock.containsRecordWithValue(value):
+							if self.workings:
+								print("Record found in bucket " + str(bucket) + " in the overflow file")
 							# then return it
 							if loc:
 								main = False
@@ -362,11 +431,16 @@ class LinearlyHashedFile:
 				return
 	
 	def search(self, value):
+		start = timer()
 		theRecord = self.utilSearch(value, False, False)
 		if not (theRecord is None):
 			theRecord.prettyPrint()
+		end = timer()
+		if self.times:
+			print("Search time: " + str((end-start)*1000) + "ms")
 		
 	def update(self, value, data):
+		start = timer()
 		# format the record to overwrite with
 		formattedRecord = Record.new(self.recordSize, self.fieldSize, self.strKeys, value, data)
 		recordInfo = self.utilSearch(value, True, False)
@@ -381,8 +455,12 @@ class LinearlyHashedFile:
 			f.seek(self.blockSize*(recordInfo["blockLoc"]) + self.recordSize*recordInfo["recordLoc"])
 			# write over the old record with new formatted one
 			f.write(formattedRecord.bytes)
+		end = timer()
+		if self.times:
+			print("Update time: " + str((end-start)*1000) + "ms")
 			
 	def delete(self, value):
+		start = timer()
 		recordInfo = self.utilSearch(value, True, False)
 		if recordInfo["main"]:
 			file = self.file
@@ -396,8 +474,12 @@ class LinearlyHashedFile:
 			# set the deletion bit to 1
 			f.write(b'\x01')
 			self.numRecordsDeleted+=1
+		end = timer()
+		if self.times:
+			print("Delete time: " + str((end-start)*1000) + "ms")
 	
 	def undelete(self, value):
+		start = timer()
 		recordInfo = self.utilSearch(value, True, True)
 		if recordInfo["main"]:
 			file = self.file
@@ -410,6 +492,9 @@ class LinearlyHashedFile:
 			f.seek(self.blockSize*(recordInfo["blockLoc"]) + self.recordSize*recordInfo["recordLoc"] + self.fieldSize)
 			# set the deletion bit to 0
 			f.write(b'\x00')
+		end = timer()
+		if self.times:
+			print("Undelete time: " + str((end-start)*1000) + "ms")
 	
 	def displayHeader(self):
 		print("n: " + str(self.n))
