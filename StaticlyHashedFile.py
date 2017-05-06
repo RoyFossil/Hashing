@@ -1,6 +1,7 @@
 from Record import *
 from Block import *
 import math
+from timeit import default_timer as timer
 
 class StaticlyHashedFile:
 	def __init__(self, blockSize, recordSize, fieldSize, fileSize, fileLoc):
@@ -15,6 +16,8 @@ class StaticlyHashedFile:
 		self.fieldSize = fieldSize
 		self.fileSize = fileSize
 		self.bfr = math.floor((blockSize)/recordSize)
+		self.times = False
+		self.workings = False
 		self.maxnoOfEntries= (self.bfr*fileSize)
 		self.noOfEntries=0
 		# truncates the file
@@ -23,7 +26,10 @@ class StaticlyHashedFile:
 			f.seek(self.blockSize*2)
 			f.write(bytearray(self.blockSize))
 
-	
+	def setStatistics(self, times, workings):
+		self.times = times
+		self.workings = workings
+		
 	def h1(self, value):
 		return value % self.fileSize
 	
@@ -40,6 +46,7 @@ class StaticlyHashedFile:
 		return sum
 	
 	def insert(self, value, record):
+		start = timer()
 		if self.noOfEntries < self.maxnoOfEntries:
 			# used to accept strings
 			intValue = self.formatValue(value)
@@ -74,7 +81,9 @@ class StaticlyHashedFile:
 								
 		else:
 			print("nahhhh dude, file's full")
-
+		end = timer()
+		if self.times:
+			print("Insert time: " + str((end-start)*1000) + "ms")	
 						
 	def utilSearch(self, value , loc, searchDeleted):
 		# pass value to first hash function
@@ -139,12 +148,17 @@ class StaticlyHashedFile:
 		print("not found3")
 			
 	def search(self, value):
+		start = timer()
 		theRecord = self.utilSearch(value, False, False)
 		if not (theRecord is None):
 			theRecord.prettyPrint()
+		end = timer()
+		if self.times:
+			print("Search time: " + str((end-start)*1000) + "ms")
 				
 						
 	def update(self, value, data):
+		start = timer()
 		recordInfo = self.utilSearch(value, True)
 		file = self.file
 		with open(file, 'r+b') as f:
@@ -152,8 +166,12 @@ class StaticlyHashedFile:
 			f.seek(self.blockSize*(recordInfo["blockLoc"]) + self.recordSize*recordInfo["recordLoc"])
 			# write over the old record with new formatted one
 			f.write(formattedRecord.bytes)
+		end = timer()
+		if self.times:
+			print("update time: " + str((end-start)*1000) + "ms")
 	
 	def delete(self,value):
+		start = timer()
 		recordInfo = self.utilSearch(value, True, False)
 		file = self.file
 		with open(file, 'r+b') as f:
@@ -162,8 +180,12 @@ class StaticlyHashedFile:
 			# set the deletion bit to 1
 			f.write(b'\x01')
 			print("ARE YOU GOING IN HERE:DELETE")
+		end = timer()
+		if self.times:
+			print("delete time: " + str((end-start)*1000) + "ms")
 			
 	def undelete(self, value):
+		start = timer()
 		recordInfo = self.utilSearch(value, True, True)
 		file = self.file
 		with open(file, 'r+b') as f:
@@ -172,6 +194,9 @@ class StaticlyHashedFile:
 			# set the deletion bit to 0
 			f.write(b'\x00')
 			print("ARE YOU GOING IN HERE:UNDELETE")	
+		end = timer()
+		if self.times:
+			print("undelete time: " + str((end-start)*1000) + "ms")
 	
 	def displayHeader(self):
 		print("Block size: " + str(self.blockSize))
