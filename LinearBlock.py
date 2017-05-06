@@ -73,6 +73,12 @@ class LinearBlock:
 			if record.getHashValue() == value:
 				return record
 	
+	def getRecordWithValueInclDeleted(self, value):
+		records = self.getAllRecordsInclDeleted()
+		for record in records:
+			if record.getHashValueEvenIfDeleted() == value:
+				return record
+	
 	def getRecordWithValueLoc(self, value):
 		records = self.getAllRecords()
 		i = 0

@@ -6,11 +6,19 @@ file = LinearlyHashedFile(256, 100, 10, 'C:/RF/test1', False)
 # recordValue = input("Enter a string to store with that hash value: ")
 
 # file.insert(int(hashValue), recordValue)
-for i in range(50, 60):
+for i in range(50, 100):
 	file.insert(i, "here is " +str(i))
+	print("Inserted: ")
 	file.search(i)
-	file.update(i, "fuck " +str(i))
+	file.delete(i)
+	print("Deleted: ")
 	file.search(i)
+	file.undelete(i)
+	print("Undeleted: ")
+	file.search(i)
+	print("")
+	
+file.display(False)
 
 # for i in range(50, 500):
 	# print("n: " + str(file.n) + "   m: " + str(file.m))
