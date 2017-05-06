@@ -2,9 +2,8 @@ from Record import *
 
 class Block: 
 	
-	def __init__(self, size, pointerSize, recordSize, fieldSize, bfr, data):
+	def __init__(self, size, recordSize, fieldSize, bfr, data):
 		self.size = size
-		self.pointerSize = pointerSize
 		# size of entire record (including hashing field)
 		self.recordSize = recordSize
 		self.fieldSize = fieldSize
@@ -23,7 +22,7 @@ class Block:
 	# only to be used inside this class
 	# makes creating records easier and more clear
 	def makeRecord(self, data):
-		return Record(self.recordSize, self.fieldSize, data)
+		return Record(self.recordSize, self.fieldSize, False, data)
 		
 	# return pointer value
 	def getPointer(self):

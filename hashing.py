@@ -4,10 +4,13 @@ file=StaticlyHashedFile(256,100,10,10,'C:/LN/test1')
 
 # file.numOfBlocksare()
 # file.insert(60, "test val holy shit holy shit holy shittttt")
-# file.search(19)
+ 
 for i in range(1,30):
 	file.insert(int(i), "test val")		
-
+	file.search(10)
+	file.delete(10)
+	file.search(10)
+	file.undelete(10)
 
 
 
