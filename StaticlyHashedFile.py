@@ -17,7 +17,6 @@ class StaticlyHashedFile:
 		self.bfr = math.floor((blockSize)/recordSize)
 		self.maxnoOfEntries= (self.bfr*fileSize)
 		self.noOfEntries=0
-		
 		# truncates the file
 		with open(self.file, 'wb') as f:
 			f.write(b"This is a shorter less ridiculous file header")
@@ -65,6 +64,7 @@ class StaticlyHashedFile:
 						numChecked+=1
 						# there has been a collision. handle it
 						print("move to the next available space")
+						print("overflow here" +  str(formattedRecord.getHashValue()) + " did it.")
 						# check to see if data exists in the next avilable bucket
 						bucket+=1
 						if bucket >= self.fileSize:
@@ -74,40 +74,7 @@ class StaticlyHashedFile:
 								
 		else:
 			print("nahhhh dude, file's full")
-			
-	def search(self, value):
-		theRecord = self.utilSearch(value, False, False)
-		if not (theRecord is None):
-			theRecord.prettyPrint()
-		
-	# def search(self, value):	
-		
-		# intValue = self.formatValue(value)
-		# bucket = (self.h1(intValue)) + 2
-		# with open(self.file, 'rb') as f:
-			# # navigate to the appropriate bucket
-			# # plus 2 is to account for the header
-			# numChecked = 0
-			# while numChecked < self.fileSize:
-				# f.seek(self.blockSize*(bucket))
-				# # load bucket into memory
-				# theBlock = self.makeBlock(f.read(self.blockSize))
-				# # currently only built to handle key values
-				# if theBlock.containsRecordWithValue(value):
-					# theRecord = theBlock.getRecordWithValue(value)
-					# theRecord.prettyPrint()
-					# break
-				# else:
-					# numChecked+=1
-						# # there has been a collision. handle it
-					# print("move to the next available space")
-						# # check to see if data exists in the next avilable bucket
-					# bucket+=1
-					# if bucket >= self.fileSize:
-						# bucket = 2
-					# else:	
-						# print("GO BACKKK")	
-						
+
 						
 	def utilSearch(self, value , loc, searchDeleted):
 		# pass value to first hash function
@@ -124,17 +91,19 @@ class StaticlyHashedFile:
 				# currently only built to handle key values
 				if searchDeleted and theBlock.containsRecordWithValueInclDeleted(value):
 				# load the record
+					print("not found4")
 					if loc:
-						main = True
+						# main = True
 						blockLoc = bucket
 						recordLoc = theBlock.containsRecordWithValueInclDeleted(value)
 						return {"blockLoc": blockLoc, "recordLoc": recordLoc}
+						
 						
 					else:
 						return theBlock.getRecordWithValueWithValueInclDeleted(value)	
 				elif (not searchDeleted) and theBlock.containsRecordWithValueInclDeleted(value):
 					if loc:
-						main = True
+						# main = False
 						blockLoc = bucket
 						recordLoc = theBlock.getRecordWithValueLocInclDeleted(value)
 						return {"blockLoc": blockLoc, "recordLoc": recordLoc}	
@@ -148,22 +117,32 @@ class StaticlyHashedFile:
 					bucket+=1
 					if bucket >= self.fileSize:
 						bucket = 2
-						if loc:
-							main = True
-							blockLoc = bucket
-							recordLoc = theBlock.containsRecordWithValueInclDeleted(value)
-							return {"blockLoc": blockLoc, "recordLoc": recordLoc}
+						if searchDeleted and theBlock.containsRecordWithValueInclDeleted(value):
+							if loc:
+								# main = True
+								blockLoc = bucket
+								recordLoc = theBlock.containsRecordWithValueInclDeleted(value)
+								return {"blockLoc": blockLoc, "recordLoc": recordLoc}
 							
 						else:
 							theBlock.containsRecordWithValueInclDeleted(value)
-					elif (not searchDeleted) and theBlock.containsRecordWithValueInclDeleted(value):
-						if loc:
-							main = False
-							blockLoc = bucket
-							recordLoc = theBlock.getRecordWithValueLocInclDeleted(value)
-							return {"blockLoc": blockLoc, "recordLoc": recordLoc}	
-						else:
-							return theBlock.getRecordWithValue(value)
+							if (not searchDeleted) and theBlock.containsRecordWithValueInclDeleted(value):
+								if loc:
+									# main = False
+									blockLoc = bucket
+									recordLoc = theBlock.getRecordWithValueLocInclDeleted(value)
+									return {"blockLoc": blockLoc, "recordLoc": recordLoc}	
+								else:
+									return theBlock.getRecordWithValue(value)
+									print("not found1")
+			print("not found2")
+		print("not found3")
+			
+	def search(self, value):
+		theRecord = self.utilSearch(value, False, False)
+		if not (theRecord is None):
+			theRecord.prettyPrint()
+				
 						
 	def update(self, value, data):
 		recordInfo = self.utilSearch(value, True)
@@ -173,7 +152,6 @@ class StaticlyHashedFile:
 			f.seek(self.blockSize*(recordInfo["blockLoc"]) + self.recordSize*recordInfo["recordLoc"])
 			# write over the old record with new formatted one
 			f.write(formattedRecord.bytes)
-			print("ARE YOU GOING IN HERE:UPDATE")
 	
 	def delete(self,value):
 		recordInfo = self.utilSearch(value, True, False)
@@ -194,7 +172,64 @@ class StaticlyHashedFile:
 			# set the deletion bit to 0
 			f.write(b'\x00')
 			print("ARE YOU GOING IN HERE:UNDELETE")	
-				
+	
+	def displayHeader(self):
+		print("Block size: " + str(self.blockSize))
+		print("Record size: " + str(self.recordSize))
+		print("Field size: " + str(self.fieldSize))
+		# print("Number of records: " + str(self.numRecords))
+		# print("Number of records deleted: " + str(self.numRecordsDeleted))
+		print("BFR: " + str(self.bfr))
+		
+	def displayBlock(self, blockNum):
+		file = self.file
+		blockNum+=2
+		blockLabel = blockNum - 2
+		with open(file, 'rb') as f:
+			# navigate to the given bucket
+			# plus 2 to account for header
+			f.seek(self.blockSize*blockNum)
+			# load bucket into memory
+			theBlock = self.makeBlock(f.read(self.blockSize))
+			# dictionary with record location and record objects
+			records = theBlock.getAllRecordsWithLoc()
+			# line number of the number for the bucket (centered)
+			labelLoc = self.bfr + 1
+			# counter for lines written, will be used to insert labelLoc at right time
+			linesWritten = 0
+			# loop through all possible locations
+			for i in range(0, self.bfr):
+				self.printTabOrBucketNum(linesWritten, labelLoc, blockNum, blockLabel)
+				print("-" * (1 + self.recordSize + 1))
+				linesWritten+=1
+				if i in records.keys():
+					value = records[i].getHashValue()
+					data = records[i].getData().decode()
+					self.printTabOrBucketNum(linesWritten, labelLoc, blockNum, blockLabel)
+					print("|" + str(value) + " "*(self.fieldSize-len(str(value))) + "|" + data + " "*(self.recordSize-(self.fieldSize + len(data) + 1)) + "|")
+					linesWritten+=1
+				else:
+					self.printTabOrBucketNum(linesWritten, labelLoc, blockNum, blockLabel)
+					print("|" + " "*(self.fieldSize) + "|" + " "*(self.recordSize-(self.fieldSize + 1)) + "|")
+					linesWritten+=1
+					print(1 + self.recordSize + 1)
+
+	def printTabOrBucketNum(self, linesWritten, labelLoc, blockNum, blockLabel):
+		if(linesWritten == labelLoc - 1):
+			print(" "*math.ceil((len(str(blockLabel)))/2) + str(blockLabel) + " "*math.floor((len(str(blockLabel)))/2), end="")
+		else:
+			print(end="")
+			
+	def display(self, withHeader):
+		if withHeader:
+			self.displayHeader()
+		with open(self.file, 'rb') as f:
+			f.seek(0, 2)
+			numBytes = f.tell()
+			numBlocks = math.ceil(numBytes/self.blockSize)
+		for blockNum in range(0, numBlocks-2):
+			self.displayBlock(blockNum)
+			
 	def makeBlock(self, data):
 		return Block(self.blockSize, self.recordSize, self.fieldSize, self.bfr, data)			
 	
