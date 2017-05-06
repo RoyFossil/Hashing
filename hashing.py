@@ -1,24 +1,19 @@
 from LinearlyHashedFile import *
+import random
 
-file = LinearlyHashedFile(256, 100, 10, 'C:/RF/test1', False)
+file = LinearlyHashedFile(512, 100, 10, 'C:/RF/test1', False, None)
 
 # hashValue = input("Enter a hash value: ")
 # recordValue = input("Enter a string to store with that hash value: ")
 
 # file.insert(int(hashValue), recordValue)
-for i in range(50, 100):
-	file.insert(i, "here is " +str(i))
-	print("Inserted: ")
-	file.search(i)
-	file.delete(i)
-	print("Deleted: ")
-	file.search(i)
-	file.undelete(i)
-	print("Undeleted: ")
-	file.search(i)
-	print("")
+for i in range(1, 100000):
+	file.insert(random.randint(1000, 10000), "here is some random string i guess")
 	
 file.display(False)
+
+newFile = LinearlyHashedFile.fromExistingFile('C:/RF/test1')
+newFile.display(True)
 
 # for i in range(50, 500):
 	# print("n: " + str(file.n) + "   m: " + str(file.m))

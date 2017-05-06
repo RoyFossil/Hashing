@@ -4,9 +4,7 @@ import math
 
 class LinearlyHashedFile:
 	
-	def __init__(self, blockSize, recordSize, fieldSize, fileLoc, strKeys):
-		self.m = 1
-		self.n = 0
+	def __init__(self, blockSize, recordSize, fieldSize, fileLoc, strKeys, readFileArgs):
 		self.file = fileLoc
 		self.overflow = fileLoc + "_overflow"
 		self.blockSize = blockSize
@@ -20,15 +18,72 @@ class LinearlyHashedFile:
 		self.fieldSize = fieldSize
 		self.blockPointerSize = 4
 		self.bfr = math.floor((blockSize-self.blockPointerSize)/self.recordSize)
-		# truncates the file
-		with open(self.file, 'wb') as f:
-			f.write(b"This is a shorter less ridiculous file header")
-			f.seek(self.blockSize*2)
-			# writes null to entire first block
-			# this is mainly so that the pointer for this block is marked as null
+		if not (readFileArgs is None):
+			self.m = readFileArgs["m"]
+			self.n = readFileArgs["n"]
+			self.numRecords = readFileArgs["numRecords"]
+			self.numRecordsDeleted = readFileArgs["numRecordsDeleted"]
+		else:
+			self.m = 1
+			self.n = 0
+			self.numRecords = 0
+			self.numRecordsDeleted = 0
+			# truncates the file
+			with open(self.file, 'wb') as f:
+				f.seek(self.blockSize*2)
+				# writes null to entire first block
+				# this is mainly so that the pointer for this block is marked as null
+				f.write(bytearray(self.blockSize))
+			self.writeFirstHeaderBlock()
+			self.writeSecondHeaderBlock()
+			# create overflow file
+			open(self.overflow, 'wb').close()
+		
+	
+	@classmethod
+	def fromExistingFile(cls, fileLoc):
+		extraFileArgs = {}
+		with open(fileLoc, 'r+b') as f:
+			f.seek(0)
+			extraFileArgs["n"] = int.from_bytes(f.read(3), byteorder='big')
+			extraFileArgs["m"] = int.from_bytes(f.read(3), byteorder='big')
+			blockSize = int.from_bytes(f.read(3), byteorder='big')
+			recordSize = int.from_bytes(f.read(3), byteorder='big')
+			fieldSize = int.from_bytes(f.read(3), byteorder='big')
+			if f.read(1) == b'\x01':
+				strKeys = True
+			else:
+				strKeys = False
+			f.seek(blockSize)
+			extraFileArgs["numRecords"] = int.from_bytes(f.read(6), byteorder='big')
+			extraFileArgs["numRecordsDeleted"] = int.from_bytes(f.read(3), byteorder='big')
+		return cls(blockSize, recordSize, fieldSize, fileLoc, strKeys, extraFileArgs)
+	
+	def writeFirstHeaderBlock(self):
+		with open(self.file, 'r+b') as f:
+			f.seek(0)
 			f.write(bytearray(self.blockSize))
-		# create overflow file
-		open(self.overflow, 'wb').close()
+			f.seek(0)
+			f.write(self.n.to_bytes(3, byteorder='big'))
+			f.write(self.m.to_bytes(3, byteorder='big'))
+			f.write(self.blockSize.to_bytes(3, byteorder='big'))
+			f.write(self.recordSize.to_bytes(3, byteorder='big'))
+			f.write(self.fieldSize.to_bytes(3, byteorder='big'))
+			if self.strKeys:
+				f.write(b'\x01')
+			else:
+				f.write(b'\x00')
+	
+	def writeSecondHeaderBlock(self):
+		with open(self.file, 'r+b') as f:
+			f.seek(self.blockSize)
+			f.write(bytearray(self.blockSize))
+			f.seek(self.blockSize)
+			f.write(self.numRecords.to_bytes(6, byteorder='big'))
+			f.write(self.numRecordsDeleted.to_bytes(3, byteorder='big'))
+			f.write(self.bfr.to_bytes(1, byteorder='big'))
+			f.write(self.numRecords.to_bytes(6, byteorder='big'))
+			
 	
 	def h1(self, value):
 		return value % self.m
@@ -71,10 +126,12 @@ class LinearlyHashedFile:
 				f.seek(self.blockSize*(bucket+2) + self.recordSize*space)
 				# slot data in there boiii
 				f.write(formattedRecord.bytes)
+				self.numRecords+=1
 			else:
 				# there has been a collision. handle it.
 				print("need a split yoooooo.  " +  str(formattedRecord.getHashValue()) + " did it.")
 				self.writeRecordToOverflow(bucket, theBlock, formattedRecord)
+				self.numRecords+=1
 				self.split(f)
 				
 	
@@ -228,6 +285,11 @@ class LinearlyHashedFile:
 			# this should update the hash functions as well
 			# as they are based off of m
 			self.m = 2*self.m
+		with open(self.file, 'r+b') as f:
+			f.seek(0)
+			f.write(self.n.to_bytes(3, byteorder='big'))
+			f.write(self.m.to_bytes(3, byteorder='big'))
+			
 	
 	def utilSearch(self, value, loc, searchDeleted):
 		# used for accepting strings
@@ -333,6 +395,7 @@ class LinearlyHashedFile:
 			f.seek(self.blockSize*(recordInfo["blockLoc"]) + self.recordSize*recordInfo["recordLoc"] + self.fieldSize)
 			# set the deletion bit to 1
 			f.write(b'\x01')
+			self.numRecordsDeleted+=1
 	
 	def undelete(self, value):
 		recordInfo = self.utilSearch(value, True, True)
@@ -349,13 +412,23 @@ class LinearlyHashedFile:
 			f.write(b'\x00')
 	
 	def displayHeader(self):
-		print("header")
+		print("n: " + str(self.n))
+		print("m: " + str(self.m))
+		print("Block size: " + str(self.blockSize))
+		print("Record size: " + str(self.recordSize))
+		print("Field size: " + str(self.fieldSize))
+		print("Uses strings for key values: " + str(self.strKeys))
+		print("Number of records: " + str(self.numRecords))
+		print("Number of records deleted: " + str(self.numRecordsDeleted))
+		print("BFR: " + str(self.bfr))
+		print("Distinct values: " + str(self.numRecords))
+		
 	
 	def displayBlock(self, main, blockNum):
 		if main:
 			file = self.file
 			blockNum+=2
-			blockLabel = blockNum
+			blockLabel = blockNum - 2
 		else:
 			file = self.overflow
 			blockLabel = "-->"
@@ -393,7 +466,7 @@ class LinearlyHashedFile:
 					linesWritten+=1
 			print(" "*tabSize + "-" * (1 + self.recordSize + 1))
 			# print overflow
-			pointer = theBlock.getPointer() - 1:
+			pointer = theBlock.getPointer() - 1
 			if pointer >= 0:
 				self.displayBlock(False, pointer)
 				
@@ -412,7 +485,7 @@ class LinearlyHashedFile:
 			numBytes = f.tell()
 		numBlocks = math.ceil(numBytes/self.blockSize)
 		for blockNum in range(0, numBlocks-2):
-			self.displayBlock(blockNum)
+			self.displayBlock(True, blockNum)
 		
 	def makeBlock(self, data):
 		return LinearBlock(self.blockSize, self.blockPointerSize, self.recordSize, self.fieldSize, self.bfr, self.strKeys, data)
