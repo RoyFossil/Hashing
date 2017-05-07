@@ -1,13 +1,15 @@
 from Record import *
 
-class Block: 
+class LinearBlock: 
 	
-	def __init__(self, size, recordSize, fieldSize, bfr, data):
+	def __init__(self, size, pointerSize, recordSize, fieldSize, bfr, strKeys, data):
 		self.size = size
+		self.pointerSize = pointerSize
 		# size of entire record (including hashing field)
 		self.recordSize = recordSize
 		self.fieldSize = fieldSize
 		self.bfr = bfr
+		self.strKeys = strKeys
 		self.data = data
 	
 	# returns the index of the available space within a block, -1 if full
@@ -22,7 +24,7 @@ class Block:
 	# only to be used inside this class
 	# makes creating records easier and more clear
 	def makeRecord(self, data):
-		return Record(self.recordSize, self.fieldSize, False, data)
+		return Record(self.recordSize, self.fieldSize, self.strKeys, data)
 		
 	# return pointer value
 	def getPointer(self):
@@ -69,6 +71,12 @@ class Block:
 		records = self.getAllRecords()
 		for record in records:
 			if record.getHashValue() == value:
+				return record
+	
+	def getRecordWithValueInclDeleted(self, value):
+		records = self.getAllRecordsInclDeleted()
+		for record in records:
+			if record.getHashValueEvenIfDeleted() == value:
 				return record
 	
 	def getRecordWithValueLoc(self, value):
