@@ -4,22 +4,33 @@ from ExtendibleHashedFile import *
 import random
 
 def initStatic():
-		print("Please enter all sizes in bytes.")
-		blockSize = int(input("Enter the block size:  "))
+	print("Please enter all sizes in bytes.")
+	blockSize = int(input("Enter the block size:  "))
+	recordSize = int(input("Enter the record size:  "))
+	while recordSize > blockSize:	
+		print("Record size must be smaller than block size")
 		recordSize = int(input("Enter the record size:  "))
-		while recordSize > blockSize:	
-			print("Record size must be smaller than block size")
-			recordSize = int(input("Enter the record size:  "))
-		fieldSize = int(input("Enter the size of the field that will be used for hashing: "))
-		while fieldSize > recordSize:	
-			print("Field size must be smaller than record size")
-			fieldSize = int(input("Enter the field size:  "))
-		fileSize = int(input("Enter the size of the file in number of blocks:  "))
-		path = input("Enter the path and name of the file:  ")
-		return StaticlyHashedFile(blockSize, recordSize, fieldSize, fileSize, path)
+	fieldSize = int(input("Enter the size of the field that will be used for hashing: "))
+	while fieldSize > recordSize:	
+		print("Field size must be smaller than record size")
+		fieldSize = int(input("Enter the field size:  "))
+	fileSize = int(input("Enter the size of the file in number of blocks:  "))
+	path = input("Enter the path and name of the file:  ")
+	return StaticlyHashedFile(blockSize, recordSize, fieldSize, fileSize, path)
 
 def initExtendible():
-	return
+	print("Please enter all sizes in bytes.")
+	blockSize = int(input("Enter the block size:  "))
+	recordSize = int(input("Enter the record size:  "))
+	while recordSize > blockSize:	
+		print("Record size must be smaller than block size")
+		recordSize = int(input("Enter the record size:  "))
+	fieldSize = int(input("Enter the size of the field that will be used for hashing: "))
+	while fieldSize > recordSize:	
+		print("Field size must be smaller than record size")
+		fieldSize = int(input("Enter the field size:  "))
+	path = input("Enter the path and name of the file:  ")
+	return ExtendibleHashedFile(blockSize, recordSize, fieldSize, path)
 
 def initLinear():
 	while True:
@@ -53,9 +64,9 @@ def initLinear():
 		else:
 			print("Please make a valid selection (N or E)")
 
-def menu(file):
+def menu(file, type):
 	while True:
-		print("Linear Hashing Menu: ")
+		print(str(type) + " Hashing Menu: ")
 		print("   1: Insert")
 		print("   2: Search")
 		print("   3: Update")
@@ -143,18 +154,18 @@ def chooseScheme():
 		print("   (L)inear Hashing")
 		choice = input("")
 		if choice == 'S' or choice == 's':
-			return {"file": initStatic(), "menu": menu}
+			return {"file": initStatic(), "type": "Static"}
 		elif choice == 'E' or choice == 'e':
-			return {"file": initExtendible(), "menu": menu}
+			return {"file": initExtendible(), "type": "Extendible"}
 		elif choice == 'L' or choice == 'l':
-			return {"file": initLinear(), "menu": menu}
+			return {"file": initLinear(), "type": "Linear"}
 		else:
 			print("Please make a valid selection (S, E, or L)")
 
 while True:
-	fileAndMenu = chooseScheme()
-	file = fileAndMenu["file"]
-	fileAndMenu["menu"](file)
+	fileAndType = chooseScheme()
+	file = fileAndType["file"]
+	menu(file, fileAndType["type"])
 
 
 

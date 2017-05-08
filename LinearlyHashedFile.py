@@ -427,14 +427,15 @@ class LinearlyHashedFile:
 							# else, check to see if this block points to another
 							pointer = ofBlock.getPointer() - 1
 				# there was no overflow block to check
-				print("Record not found")
-				return
+				return None
 	
 	def search(self, value):
 		start = timer()
 		theRecord = self.utilSearch(value, False, False)
 		if not (theRecord is None):
 			theRecord.prettyPrint()
+		else:
+			print("Record not found")
 		end = timer()
 		if self.times:
 			print("Search time: " + str((end-start)*1000) + "ms")
@@ -444,17 +445,20 @@ class LinearlyHashedFile:
 		# format the record to overwrite with
 		formattedRecord = Record.new(self.recordSize, self.fieldSize, self.strKeys, value, data)
 		recordInfo = self.utilSearch(value, True, False)
-		if recordInfo["main"]:
-			file = self.file
-			# add two blocks for header??
-			recordInfo["blockLoc"]+=2
+		if not (recordInfo is None):
+			if recordInfo["main"]:
+				file = self.file
+				# add two blocks for header??
+				recordInfo["blockLoc"]+=2
+			else:
+				file = self.overflow
+			with open(file, 'r+b') as f:
+				# navigate to the record to be updated
+				f.seek(self.blockSize*(recordInfo["blockLoc"]) + self.recordSize*recordInfo["recordLoc"])
+				# write over the old record with new formatted one
+				f.write(formattedRecord.bytes)
 		else:
-			file = self.overflow
-		with open(file, 'r+b') as f:
-			# navigate to the record to be updated
-			f.seek(self.blockSize*(recordInfo["blockLoc"]) + self.recordSize*recordInfo["recordLoc"])
-			# write over the old record with new formatted one
-			f.write(formattedRecord.bytes)
+			print("Record not found")
 		end = timer()
 		if self.times:
 			print("Update time: " + str((end-start)*1000) + "ms")
@@ -462,18 +466,21 @@ class LinearlyHashedFile:
 	def delete(self, value):
 		start = timer()
 		recordInfo = self.utilSearch(value, True, False)
-		if recordInfo["main"]:
-			file = self.file
-			# add two blocks for header??
-			recordInfo["blockLoc"]+=2
+		if not (recordInfo is None):
+			if recordInfo["main"]:
+				file = self.file
+				# add two blocks for header??
+				recordInfo["blockLoc"]+=2
+			else:
+				file = self.overflow
+			with open(file, 'r+b') as f:
+				# navigate to the record to be updated
+				f.seek(self.blockSize*(recordInfo["blockLoc"]) + self.recordSize*recordInfo["recordLoc"] + self.fieldSize)
+				# set the deletion bit to 1
+				f.write(b'\x01')
+				self.numRecordsDeleted+=1
 		else:
-			file = self.overflow
-		with open(file, 'r+b') as f:
-			# navigate to the record to be updated
-			f.seek(self.blockSize*(recordInfo["blockLoc"]) + self.recordSize*recordInfo["recordLoc"] + self.fieldSize)
-			# set the deletion bit to 1
-			f.write(b'\x01')
-			self.numRecordsDeleted+=1
+			print("Record not found")
 		end = timer()
 		if self.times:
 			print("Delete time: " + str((end-start)*1000) + "ms")
@@ -481,17 +488,20 @@ class LinearlyHashedFile:
 	def undelete(self, value):
 		start = timer()
 		recordInfo = self.utilSearch(value, True, True)
-		if recordInfo["main"]:
-			file = self.file
-			# add two blocks for header??
-			recordInfo["blockLoc"]+=2
+		if not (recordInfo is None):
+			if recordInfo["main"]:
+				file = self.file
+				# add two blocks for header??
+				recordInfo["blockLoc"]+=2
+			else:
+				file = self.overflow
+			with open(file, 'r+b') as f:
+				# navigate to the record to be updated
+				f.seek(self.blockSize*(recordInfo["blockLoc"]) + self.recordSize*recordInfo["recordLoc"] + self.fieldSize)
+				# set the deletion bit to 0
+				f.write(b'\x00')
 		else:
-			file = self.overflow
-		with open(file, 'r+b') as f:
-			# navigate to the record to be updated
-			f.seek(self.blockSize*(recordInfo["blockLoc"]) + self.recordSize*recordInfo["recordLoc"] + self.fieldSize)
-			# set the deletion bit to 0
-			f.write(b'\x00')
+			print("Record not found")
 		end = timer()
 		if self.times:
 			print("Undelete time: " + str((end-start)*1000) + "ms")

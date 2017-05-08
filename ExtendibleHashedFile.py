@@ -71,7 +71,7 @@ class ExtendibleHashedFile:
 		bucket = self.getBucketPointer(value)
 		print("Bucket: " + str(bucket))
 		#format the record to be inserted
-		formattedRecord = Record.new(self.recordSize, self.fieldSize, value, record)
+		formattedRecord = Record.new(self.recordSize, self.fieldSize, False, value, record)
 		#open the file as binary read and write
 		with open(self.file, 'r+b', buffering=self.blockSize) as f:
 			#navigate to the appropriate bucket
@@ -209,7 +209,7 @@ class ExtendibleHashedFile:
 
 	def update(self, value, data):
         #format record
-		formattedRecord = Record.new(self.recordSize, self.fieldSize, value, data)
+		formattedRecord = Record.new(self.recordSize, self.fieldSize, False, value, data)
 		
 		bucket = self.getBucketPointer(value)
 		

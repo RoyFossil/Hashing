@@ -22,7 +22,7 @@ class ExtendibleBlock:
 	# only to be used inside this class
 	# makes creating records easier and more clear
 	def makeRecord(self, data):
-		return Record(self.recordSize, self.fieldSize, data)
+		return Record(self.recordSize, self.fieldSize, False, data)
 
 	# return pointer value
 	def getLocalDepth(self):
