@@ -1,16 +1,24 @@
 from LinearlyHashedFile import *
+from StaticlyHashedFile import *
+from ExtendibleHashedFile import *
 import random
 
 def initStatic():
-	return
-
-def staticMenu(file):
-	return
+		print("Please enter all sizes in bytes.")
+		blockSize = int(input("Enter the block size:  "))
+		recordSize = int(input("Enter the record size:  "))
+		while recordSize > blockSize:	
+			print("Record size must be smaller than block size")
+			recordSize = int(input("Enter the record size:  "))
+		fieldSize = int(input("Enter the size of the field that will be used for hashing: "))
+		while fieldSize > recordSize:	
+			print("Field size must be smaller than record size")
+			fieldSize = int(input("Enter the field size:  "))
+		fileSize = int(input("Enter the size of the file in number of blocks:  "))
+		path = input("Enter the path and name of the file:  ")
+		return StaticlyHashedFile(blockSize, recordSize, fieldSize, fileSize, path)
 
 def initExtendible():
-	return
-
-def extendibleMenu(file):
 	return
 
 def initLinear():
@@ -45,7 +53,7 @@ def initLinear():
 		else:
 			print("Please make a valid selection (N or E)")
 
-def linearMenu(file):
+def menu(file):
 	while True:
 		print("Linear Hashing Menu: ")
 		print("   1: Insert")
@@ -60,28 +68,28 @@ def linearMenu(file):
 		if choice == '1':
 			keyVal = input("Enter the key value for the record to be inserted:  ")
 			data = input("Enter the data to be stored with that value: ")
-			if not file.strKeys:
+			if not hasattr(file, "strKeys") or not file.strKeys:
 				keyVal = int(keyVal)
 			file.insert(keyVal, data)
 		elif choice == '2':
 			keyVal = input("Enter the key value for the record to be search:  ")
-			if not file.strKeys:
+			if not hasattr(file, "strKeys") or not file.strKeys:
 				keyVal = int(keyVal)
 			file.search(keyVal)
 		elif choice == '3':
 			keyVal = input("Enter the key value for the record to be updated:  ")
 			data = input("Enter the data to be stored with that value: ")
-			if not file.strKeys:
+			if not hasattr(file, "strKeys") or not file.strKeys:
 				keyVal = int(keyVal)
 			file.update(keyVal, data)
 		elif choice == '4':
 			keyVal = input("Enter the key value for the record to be deleted:  ")
-			if not file.strKeys:
+			if not hasattr(file, "strKeys") or not file.strKeys:
 				keyVal = int(keyVal)
 			file.delete(keyVal)
 		elif choice == '5':
 			keyVal = input("Enter the key value for the record to be undeleted:  ")
-			if not file.strKeys:
+			if not hasattr(file, "strKeys") or not file.strKeys:
 				keyVal = int(keyVal)
 			file.undelete(keyVal)
 		elif choice == '6':
@@ -135,11 +143,11 @@ def chooseScheme():
 		print("   (L)inear Hashing")
 		choice = input("")
 		if choice == 'S' or choice == 's':
-			return {"file": initStatic(), "menu": staticMenu}
+			return {"file": initStatic(), "menu": menu}
 		elif choice == 'E' or choice == 'e':
-			return {"file": initExtendible(), "menu": extendibleMenu}
+			return {"file": initExtendible(), "menu": menu}
 		elif choice == 'L' or choice == 'l':
-			return {"file": initLinear(), "menu": linearMenu}
+			return {"file": initLinear(), "menu": menu}
 		else:
 			print("Please make a valid selection (S, E, or L)")
 
