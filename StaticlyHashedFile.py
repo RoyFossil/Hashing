@@ -159,11 +159,13 @@ class StaticlyHashedFile:
 						
 	def update(self, value, data):
 		start = timer()
-		recordInfo = self.utilSearch(value, True)
+
+		formattedRecord = Record.new(self.recordSize, self.fieldSize, False, value, data)
+		recordInfo = self.utilSearch(value, True, False)
 		file = self.file
 		with open(file, 'r+b') as f:
 			# navigate to the record to be updated
-			f.seek(self.blockSize*(recordInfo["blockLoc"]) + self.recordSize*recordInfo["recordLoc"])
+			f.seek(self.blockSize + self.recordSize)
 			# write over the old record with new formatted one
 			f.write(formattedRecord.bytes)
 		end = timer()
@@ -176,7 +178,7 @@ class StaticlyHashedFile:
 		file = self.file
 		with open(file, 'r+b') as f:
 			# navigate to the record to be updated
-			f.seek(self.blockSize*(recordInfo["blockLoc"]) + self.recordSize*recordInfo["recordLoc"] + self.fieldSize)
+			f.seek(self.blockSize*(recordInfo["blockLoc"]) + self.recordSize*recordInfo["recordLoc"])
 			# set the deletion bit to 1
 			f.write(b'\x01')
 			print("ARE YOU GOING IN HERE:DELETE")
@@ -187,13 +189,16 @@ class StaticlyHashedFile:
 	def undelete(self, value):
 		start = timer()
 		recordInfo = self.utilSearch(value, True, True)
-		file = self.file
-		with open(file, 'r+b') as f:
-			# navigate to the record to be updated
-			f.seek(self.blockSize*(recordInfo["blockLoc"]) + self.recordSize*recordInfo["recordLoc"] + self.fieldSize)
-			# set the deletion bit to 0
-			f.write(b'\x00')
-			print("ARE YOU GOING IN HERE:UNDELETE")	
+		if not (recordInfo is None):
+			file = self.file
+			with open(file, 'r+b') as f:
+				# navigate to the record to be updated
+				f.seek(self.blockSize*(recordInfo["blockLoc"]) + self.recordSize*recordInfo["recordLoc"] + self.fieldSize)
+				# set the deletion bit to 0
+				f.write(b'\x00')
+				print("ARE YOU GOING IN HERE:UNDELETE")	
+		else:
+			print("Record not found")		
 		end = timer()
 		if self.times:
 			print("undelete time: " + str((end-start)*1000) + "ms")

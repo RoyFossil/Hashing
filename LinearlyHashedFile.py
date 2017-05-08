@@ -438,8 +438,10 @@ class LinearlyHashedFile:
 							# else, check to see if this block points to another
 							pointer = ofBlock.getPointer() - 1
 				# there was no overflow block to check
+
 				if self.workings:
 					print("Record was not found in overflow.")
+
 				return None
 	
 	def search(self, value):
@@ -470,7 +472,9 @@ class LinearlyHashedFile:
 				f.seek(self.blockSize*(recordInfo["blockLoc"]) + self.recordSize*recordInfo["recordLoc"])
 				# write over the old record with new formatted one
 				f.write(formattedRecord.bytes)
+
 				print("Record updated.")
+
 		else:
 			print("Record not found")
 		end = timer()
@@ -493,7 +497,9 @@ class LinearlyHashedFile:
 				# set the deletion bit to 1
 				f.write(b'\x01')
 				self.numRecordsDeleted+=1
+
 				print("Record deleted.")
+
 		else:
 			print("Record not found")
 		end = timer()
@@ -515,7 +521,9 @@ class LinearlyHashedFile:
 				f.seek(self.blockSize*(recordInfo["blockLoc"]) + self.recordSize*recordInfo["recordLoc"] + self.fieldSize)
 				# set the deletion bit to 0
 				f.write(b'\x00')
+
 				print("Record undeleted.")
+
 		else:
 			print("Record not found")
 		end = timer()
