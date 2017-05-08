@@ -40,6 +40,12 @@ class Record:
 	
 	def getHashValueEvenIfDeleted(self):
 		if self.strKeys:
+			return (self.bytes[0:self.fieldSize]).rstrip(b'\x00').decode()
+		else:
+			return int.from_bytes(self.bytes[0:self.fieldSize], byteorder='big')
+	
+	def getHashValueIntEvenIfDeleted(self):
+		if self.strKeys:
 			return self.sumChars(self.getHashValue())
 		else:
 			return int.from_bytes(self.bytes[0:self.fieldSize], byteorder='big')

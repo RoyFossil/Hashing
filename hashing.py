@@ -66,7 +66,7 @@ def initLinear():
 
 def menu(file, type):
 	while True:
-		print(str(type) + " Hashing Menu: ")
+		print("\n" + str(type) + " Hashing Menu: ")
 		print("   1: Insert")
 		print("   2: Search")
 		print("   3: Update")
@@ -76,6 +76,7 @@ def menu(file, type):
 		print("   7: Print statistics")
 		print("   8: Quit")
 		choice = input("")
+		print("")
 		if choice == '1':
 			keyVal = input("Enter the key value for the record to be inserted:  ")
 			data = input("Enter the data to be stored with that value: ")
@@ -145,6 +146,7 @@ def menu(file, type):
 			break
 		else:
 			print("Please make a valid selection (1-8)")
+	print("")
 
 def chooseScheme():
 	while True:

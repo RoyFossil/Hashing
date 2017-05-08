@@ -159,6 +159,7 @@ class StaticlyHashedFile:
 						
 	def update(self, value, data):
 		start = timer()
+
 		formattedRecord = Record.new(self.recordSize, self.fieldSize, False, value, data)
 		recordInfo = self.utilSearch(value, True, False)
 		file = self.file
