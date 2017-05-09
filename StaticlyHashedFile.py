@@ -159,14 +159,12 @@ class StaticlyHashedFile:
 						
 	def update(self, value, data):
 		start = timer()
-
 		formattedRecord = Record.new(self.recordSize, self.fieldSize, False, value, data)
 		recordInfo = self.utilSearch(value, True, False)
 		file = self.file
 		with open(file, 'r+b') as f:
 			# navigate to the record to be updated
-			f.seek(self.blockSize + self.recordSize)
-			# write over the old record with new formatted one
+			f.seek(self.blockSize*(recordInfo["blockLoc"]) + self.recordSize*recordInfo["recordLoc"])			# write over the old record with new formatted one
 			f.write(formattedRecord.bytes)
 		end = timer()
 		if self.times:
