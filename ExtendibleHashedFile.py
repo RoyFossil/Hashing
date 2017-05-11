@@ -1,7 +1,7 @@
 from Record import Record
 from ExtendibleBlock import *
 import math
-
+from timeit import default_timer as timer
 class ExtendibleHashedFile:
 
 	def __init__(self, blockSize, recordSize, fieldSize, fileLoc):
@@ -15,13 +15,15 @@ class ExtendibleHashedFile:
 		self.bfr = math.floor((blockSize)/(self.recordSize))
 		self.globalDepth = 0
 		self.nextAvailableBucket = 3
-	
+		self.times = False
+		self.workings = False
+		self.numRecords = 0
 		self.Directory = {}
 		self.Directory[""] = 2
 	
 		# truncates the file
 		with open(self.file, 'wb') as f:
-			f.write(b"some heagfho[iserjiodfgfg")
+			f.write(b"some header")
 			f.seek(self.blockSize*2)
 			f.write(bytearray(self.blockSize))
 			# set local depth to 0
@@ -61,37 +63,73 @@ class ExtendibleHashedFile:
 			
 	def getLeftmostBits(self, value, count):
 		if count>0:
-			print("Val: " + str(self.h1(value)) + " Count: " + str(count) + " LMB: " + self.getBinary(self.h1(value))[:count])
 			return self.getBinary(self.h1(value))[:count]
 		else:
 			return ""
 		
 	def insert(self, value, record):
+		start = timer()
+		if self.workings:
+			print("Search for key value first to ensure record does not already exist.")
+		if not (self.utilSearch(value, False, False) is None):
+			print("Record with that key already exists, cannot insert.")
+			return	
+		if self.workings:
+			print("Begin insert.")
+		
+			
 		#using the hash function
 		bucket = self.getBucketPointer(value)
-		print("Bucket: " + str(bucket))
+		
+		if self.workings:
+			print(str(value) + " maps to bucket " + str(bucket))
+		
 		#format the record to be inserted
 		formattedRecord = Record.new(self.recordSize, self.fieldSize, False, value, record)
 		#open the file as binary read and write
 		with open(self.file, 'r+b', buffering=self.blockSize) as f:
 			#navigate to the appropriate bucket
-			#plus 2 is to account for the header
 			f.seek(self.blockSize*(bucket))
+			
+			if self.workings:
+				print("Navigate to bucket " + str(bucket))
+			
 			#check to see if data exits in this bucket
 			theBlock = self.makeBlock(f.read(self.blockSize))
 			space = theBlock.hasSpace()
 			if space>=0:
+				if self.workings:
+					print("Space " + str(space) + " is available in this bucket.")
 				# spot was open, move pointer back
 				f.seek(self.blockSize*(bucket) + self.recordSize*space)
 				#slot data in there boiiiiii
 				f.write(formattedRecord.bytes)
+				if self.workings:
+					print("The record was inserted at record number " + str(space) + " in bucket " + str(bucket) + ".")
 			
 			else:
+				if self.workings:
+					print("The bucket is full.  Initiate a split.")
+				# clear out bucket on disk
+				f.seek(self.blockSize*(bucket))
+				f.write(bytearray(self.blockSize))
 				self.split(f, theBlock, formattedRecord, value)
-	
+		end = timer()		
+		if self.times:
+			print("Insert time: " + str((end-start)*1000) + "ms")
+
 	def split(self, mainFile, theBlock, theRecord, value):
+		
+		bucket = self.getBucketPointer(value)
+		
+		if self.workings:
+			print("Bucket " + str() + " will be split.")
+		
 		# If there's collision split bucket
 		if theBlock.getLocalDepth() == self.globalDepth:
+			if self.workings:
+				print("The local depth of bucket " + str(bucket) + " is equal to the global depth.")
+				print("This means the directory must be expanded.")
 			newDirectory = {}
 			for entry in self.Directory.keys():
 				str1 = entry + "0"
@@ -100,11 +138,15 @@ class ExtendibleHashedFile:
 				newDirectory[str2] = self.Directory[entry]
 			self.globalDepth += 1
 			self.Directory = newDirectory
-		print(self.Directory)
+			if self.workings:
+				print("Here is the new directory: ")
+				print(self.Directory)
 	
 		allRecords = theBlock.getAllRecords()
-		if not (theRecord is None):
-			allRecords.append(theRecord)
+		allRecords.append(theRecord)
+		
+		if self.workings:
+			print(str(len(allRecords)) + " record(s) will be rehashed." )
 		
 		orig=[]
 		new=[]
@@ -128,9 +170,11 @@ class ExtendibleHashedFile:
 				mainFile.seek(self.blockSize*(self.Directory[self.padVal(curr)]) + self.recordSize*(count - 1))
 				mainFile.write(record.bytes)
 			else:
-				print("overflow while splitting")
+				#print("overflow while splitting")
 				needAnotherSplit=True
-				
+		if self.workings and count:
+			print(str(count) + " records rehashed to bucket " + str(bucket))
+		
 		count=0
 		for record in new:
 			count+=1
@@ -138,8 +182,10 @@ class ExtendibleHashedFile:
 				mainFile.seek(self.blockSize*(self.Directory[self.padVal(next)]) + self.recordSize*(count - 1))
 				mainFile.write(record.bytes)
 			else:
-				print("overflow while splitting")
+				#print("overflow while splitting")
 				needAnotherSplit=True
+		if self.workings and count:
+			print(str(count) + " records rehashed to bucket " + str(self.nextAvailableBucket))
 		
 		self.nextAvailableBucket += 1
 		newLocalDepth = theBlock.getLocalDepth() + 1
@@ -148,7 +194,7 @@ class ExtendibleHashedFile:
 		mainFile.seek(self.blockSize*(self.Directory[self.padVal(next)] + 1) - self.depthSize)
 		mainFile.write(newLocalDepth.to_bytes(self.depthSize, byteorder='big'))
 		
-		print(self.Directory)
+		#print(self.Directory)
 		
 		if needsAnotherSplit:
 			if len(orig) > len(new):
@@ -170,7 +216,7 @@ class ExtendibleHashedFile:
 	
 	def getBucketPointer(self, value):
 		leftmost = self.getLeftmostBits(value, self.globalDepth)
-		print(leftmost)
+		#print(leftmost)
 		return self.Directory[self.padVal(leftmost)]
 		
 	def utilSearch(self, value, loc, searchDeleted):	
@@ -198,60 +244,85 @@ class ExtendibleHashedFile:
 				else:
 					return theBlock.getRecordWithValue(value)
 			else:
-					print("Record not found")
-		
-
+					return
 		
 	def search(self, value):
+		start = timer()
 		theRecord = self.utilSearch(value, False, False)
-		if not (theRecord is None):
+		if theRecord is None:
+			print("Record not found")
+		else:
 			theRecord.prettyPrint()
+		end = timer()
+		if self.times:
+			print("Search time: " + str((end-start)*1000) + "ms")	
 
 	def update(self, value, data):
+		start = timer()
         #format record
 		formattedRecord = Record.new(self.recordSize, self.fieldSize, False, value, data)
-		
 		bucket = self.getBucketPointer(value)
-		
-		# open the file as binary read and write
-		with open(self.file, 'r+b', buffering=self.blockSize) as f:
-			# navigate to the appropriate bucket
-			# plus 2 is to account for the header
-			f.seek(self.blockSize*(bucket))
-			# load bucket into memory
-			theBlock = self.makeBlock(f.read(self.blockSize))
-			if theBlock.containsRecordWithValue(value):
-				recLoc = theBlock.getRecordWithValueLoc(value)
-				f.seek(self.blockSize*bucket + self.recordSize*recLoc)
-				f.write(formattedRecord.bytes)
+		recordInfo = self.utilSearch(value, True, False)
+		if recordInfo is None:
+			print("Record not found.")
+		else:
+			# open the file as binary read and write
+			with open(self.file, 'r+b', buffering=self.blockSize) as f:
+				# navigate to the appropriate bucket
+				# plus 2 is to account for the header
+				f.seek(self.blockSize*(bucket))
+				# load bucket into memory
+				theBlock = self.makeBlock(f.read(self.blockSize))
+				if theBlock.containsRecordWithValue(value):
+					recLoc = theBlock.getRecordWithValueLoc(value)
+					f.seek(self.blockSize*bucket + self.recordSize*recLoc)
+					f.write(formattedRecord.bytes)
+		end = timer()
+		if self.times:
+			print("Search time: " + str((end-start)*1000) + "ms")	
 			
 	def delete(self, value):
+		start = timer()
 		recordInfo = self.utilSearch(value, True, False)
-		with open(self.file, 'r+b', buffering=self.blockSize) as f:
-			# navigate to the record to be updated
-			f.seek(self.blockSize*(recordInfo["blockLoc"]) + self.recordSize*recordInfo["recordLoc"] + self.fieldSize)
-			# set the deletion bit to 1
-			f.write(b'\x01')
+		if recordInfo is None:
+			print("Record not found")
+		else:
+			with open(self.file, 'r+b', buffering=self.blockSize) as f:
+				# navigate to the record to be updated
+				f.seek(self.blockSize*(recordInfo["blockLoc"]) + self.recordSize*recordInfo["recordLoc"] + self.fieldSize)
+				# set the deletion bit to 1
+				f.write(b'\x01')
+		end = timer()
+		if self.times:
+			print("Delete time: " + str((end-start)*1000) + "ms")
+		
 			
 	def undelete(self, value):
+		start = timer()
 		recordInfo = self.utilSearch(value, True, True)
-		with open(self.file, 'r+b', buffering=self.blockSize) as f:
-			# navigate to the record to be updated
-			f.seek(self.blockSize*(recordInfo["blockLoc"]) + self.recordSize*recordInfo["recordLoc"] + self.fieldSize)
-			# set the deletion bit to 0
-			f.write(b'\x00')
+		if recordInfo is None:
+			print("Record not found")
+		else:	
+			with open(self.file, 'r+b', buffering=self.blockSize) as f:
+				# navigate to the record to be updated
+				f.seek(self.blockSize*(recordInfo["blockLoc"]) + self.recordSize*recordInfo["recordLoc"] + self.fieldSize)
+				# set the deletion bit to 0
+				f.write(b'\x00')
+		end = timer()
+		if self.times:
+			print("Undelete time: " + str((end-start)*1000) + "ms")
 
 	def displayHeader(self):
 		print()
-		print("globalDepth")
+		print("globalDepth" + str(self.globalDepth))
 		print("Bucket: ")
-		print("Block size: ")
-		print("Record size: ")
-		print("Field size: " )
-		print("Number of records:")
-		print("Number of records deleted:")
-		print("BFR: ")
-		print("Distinct values: ")
+		print("Block size: " + str(self.blockSize))
+		print("Record size: " + str(self.recordSize))
+		print("Field size: "  + str(self.fieldSize))
+		print("Number of records:"+ str(self.numRecords))
+		print("Number of records deleted:") 
+		print("BFR: " + str(self.bfr))
+		print("Distinct values: ") 
 	
 	def displayBlock(self, bucket):
 		with open(self.file, 'r+b', buffering=self.blockSize) as f:
@@ -267,6 +338,7 @@ class ExtendibleHashedFile:
 			linesWritten = 0
 			tabSize = 5
 			blockLabel = bucket
+			
 			
 			# loop through all possible locations
 			for i in range(0, self.bfr):
@@ -298,9 +370,18 @@ class ExtendibleHashedFile:
 			f.seek(0, 2)
 			numBytes = f.tell()
 		numBlocks = math.ceil(numBytes/self.blockSize)
-		for bucket in range(0, numBlocks-2):
-			self.displayBlock(True, bucket)
+		print(numBlocks)
+		for bucket in range(2, numBlocks):
+			self.displayBlock(bucket)
 			
+	# takes two boolean arguments
+	# time: print time to complete each operation
+	# working: print navigation and other info
+	# note: times will be artificially increased if working is on at the same time
+	# recommend picking either one or the other
+	def setStatistics(self, times, workings):
+		self.times = times
+		self.workings = workings
 	
 	def makeBlock(self, data):
 		return ExtendibleBlock(self.blockSize, self.recordSize, self.fieldSize, self.bfr, self.depthSize, data)
