@@ -4,9 +4,10 @@ import math
 from timeit import default_timer as timer
 
 class StaticlyHashedFile:
-	def __init__(self, blockSize, recordSize, fieldSize, fileSize, fileLoc):
+	def __init__(self, blockSize, recordSize, fieldSize, fileSize, strKeys, fileLoc):
 		self.file = fileLoc
 		self.blockSize = blockSize
+		self.strKeys = strKeys
 		# record size supplied by user should include the hash field size
 		# 1 is added for the deletion marker
 		# or maybe not, because if a use submits a record size, that should be the record size
@@ -47,11 +48,23 @@ class StaticlyHashedFile:
 	
 	def insert(self, value, record):
 		start = timer()
+		if self.workings:
+			print("Search for key value first to ensure record does not already exist.")
+			
+		if not (self.utilSearch(value, False, False) is None):
+			print("Record with that key already exists, cannot insert.")
+			return
+			
+		if self.workings:
+			print("Begin insert.")
+			
 		if self.noOfEntries < self.maxnoOfEntries:
 			# used to accept strings
 			intValue = self.formatValue(value)
 			# pass value to first hash function
 			bucket = (self.h1(intValue)) + 2
+			if self.workings:
+				print(str(value) + " maps to bucket " + str(bucket))
 			formattedRecord = Record.new(self.recordSize, self.fieldSize, False, value, record)
 			with open(self.file, 'r+b') as f:
 				# navigate to the appropriate bucket
@@ -60,9 +73,13 @@ class StaticlyHashedFile:
 				while numChecked < self.fileSize:
 					f.seek(self.blockSize*(bucket))
 					# check to see if data exists in this bucket
+					if self.workings:
+						print("Navigate to bucket " + str(bucket))
 					theBlock = self.makeBlock(f.read(self.blockSize))
 					space = theBlock.hasSpace()
 					if space>=0:
+						if self.workings:
+							print("Space " + str(space) + " is available in this bucket.")
 						f.seek(self.blockSize*(bucket) + self.recordSize*space)
 						f.write(formattedRecord.bytes)
 						self.noOfEntries+=1
@@ -70,6 +87,8 @@ class StaticlyHashedFile:
 					else:
 						numChecked+=1
 						# there has been a collision. handle it
+						if self.workings:
+							print("The bucket is full, write the record to next available one.")
 						print("move to the next available space")
 						print("overflow here" +  str(formattedRecord.getHashValue()) + " did it.")
 						# check to see if data exists in the next avilable bucket
@@ -84,69 +103,46 @@ class StaticlyHashedFile:
 		end = timer()
 		if self.times:
 			print("Insert time: " + str((end-start)*1000) + "ms")	
-						
-	def utilSearch(self, value , loc, searchDeleted):
-		# pass value to first hash function
-		bucket = self.h1(value) + 2 
-		# open the file as binary read
-		with open(self.file, 'rb') as f:	
-			numChecked = 0
-			while numChecked < self.fileSize:
-				# navigate to the appropriate bucket
-				# plus 2 is to account for the header
-				f.seek(self.blockSize*(bucket))				
-				# load bucket into memory
-				theBlock = self.makeBlock(f.read(self.blockSize))
-				# currently only built to handle key values
-				if searchDeleted and theBlock.containsRecordWithValueInclDeleted(value):
-				# load the record
-					print("not found4")
-					if loc:
-						# main = True
-						blockLoc = bucket
-						recordLoc = theBlock.containsRecordWithValueInclDeleted(value)
-						return {"blockLoc": blockLoc, "recordLoc": recordLoc}
-						
-						
-					else:
-						return theBlock.getRecordWithValueWithValueInclDeleted(value)	
-				elif (not searchDeleted) and theBlock.containsRecordWithValueInclDeleted(value):
-					if loc:
-						# main = False
-						blockLoc = bucket
-						recordLoc = theBlock.getRecordWithValueLocInclDeleted(value)
-						return {"blockLoc": blockLoc, "recordLoc": recordLoc}	
-					else:
-						return theBlock.getRecordWithValue(value)
-					
-				else:
-					numChecked+=1
-					print("check the next one")
-					# check to see if data exists in the next avilable bucket
-					bucket+=1
-					if bucket >= self.fileSize:
-						bucket = 2
-						if searchDeleted and theBlock.containsRecordWithValueInclDeleted(value):
-							if loc:
-								# main = True
-								blockLoc = bucket
-								recordLoc = theBlock.containsRecordWithValueInclDeleted(value)
-								return {"blockLoc": blockLoc, "recordLoc": recordLoc}
-							
-						else:
-							theBlock.containsRecordWithValueInclDeleted(value)
-							if (not searchDeleted) and theBlock.containsRecordWithValueInclDeleted(value):
-								if loc:
-									# main = False
-									blockLoc = bucket
-									recordLoc = theBlock.getRecordWithValueLocInclDeleted(value)
-									return {"blockLoc": blockLoc, "recordLoc": recordLoc}	
-								else:
-									return theBlock.getRecordWithValue(value)
-									print("not found1")
-			print("not found2")
-		print("not found3")
 			
+	def utilSearch(self, value, loc, searchDeleted):	
+		# used for accepting strings
+		intValue = self.formatValue(value)
+		bucket = self.h1(intValue) + 2 
+		if self.workings:
+			print(str(value) + " maps to bucket " + str(bucket))
+		#open the file as binary read
+		with open(self.file, 'rb') as f:
+			#navigate to the appropraite bucket
+			f.seek(self.blockSize*(bucket))
+			if self.workings:
+				print("Navigate to bucket " + str(bucket))
+			# load bucket into memory
+			#load bucket into memory
+			theBlock = self.makeBlock(f.read(self.blockSize))
+			# currently only built to handle key values
+			if searchDeleted and theBlock.containsRecordWithValueInclDeleted(value):
+				if self.workings:
+					print("Record found in bucket " + str(bucket))
+				if loc:
+					blockLoc = bucket
+					recordLoc = theBlock.getRecordWithValueLocInclDeleted(value)
+					return {"blockLoc": blockLoc, "recordLoc": recordLoc}
+				else:
+					return theBlock.getRecordWithValueInclDeleted(value)
+			elif (not searchDeleted) and theBlock.containsRecordWithValue(value):
+				if self.workings:
+					print("Record found in bucket " + str(bucket))
+				# load the record
+				if loc:
+					blockLoc = bucket
+					recordLoc = theBlock.getRecordWithValueLoc(value)
+					return {"blockLoc": blockLoc, "recordLoc": recordLoc}
+				else:
+					return theBlock.getRecordWithValue(value)
+			else:
+				return
+		
+	
 	def search(self, value):
 		start = timer()
 		theRecord = self.utilSearch(value, False, False)
@@ -159,52 +155,55 @@ class StaticlyHashedFile:
 						
 	def update(self, value, data):
 		start = timer()
-		formattedRecord = Record.new(self.recordSize, self.fieldSize, False, value, data)
-		recordInfo = self.utilSearch(value, True, False)
-		file = self.file
-		with open(file, 'r+b') as f:
-			# navigate to the record to be updated
-			f.seek(self.blockSize*(recordInfo["blockLoc"]) + self.recordSize*recordInfo["recordLoc"])			# write over the old record with new formatted one
-			f.write(formattedRecord.bytes)
-		end = timer()
-		if self.times:
-			print("update time: " + str((end-start)*1000) + "ms")
-	
-	def delete(self,value):
-		start = timer()
+		formattedRecord = Record.new(self.recordSize, self.fieldSize, self.strKeys, value, data)
 		recordInfo = self.utilSearch(value, True, False)
 		file = self.file
 		with open(file, 'r+b') as f:
 			# navigate to the record to be updated
 			f.seek(self.blockSize*(recordInfo["blockLoc"]) + self.recordSize*recordInfo["recordLoc"])
-			# set the deletion bit to 1
-			f.write(b'\x01')
-			print("ARE YOU GOING IN HERE:DELETE")
+			# write over the old record with new formatted one
+			f.write(formattedRecord.bytes)
 		end = timer()
 		if self.times:
-			print("delete time: " + str((end-start)*1000) + "ms")
+			print("update time: " + str((end-start)*1000) + "ms")
+	
+	def delete(self, value):
+		start = timer()
+		recordInfo = self.utilSearch(value, True, False)
+		if recordInfo is None:
+			print("Record not found")
+		else:
+			with open(self.file, 'r+b', buffering=self.blockSize) as f:
+				# navigate to the record to be updated
+				f.seek(self.blockSize*(recordInfo["blockLoc"]) + self.recordSize*recordInfo["recordLoc"] + self.fieldSize)
+				# set the deletion bit to 1
+				f.write(b'\x01')
+				print("record deleted")
+		end = timer()
+		if self.times:
+			print("Delete time: " + str((end-start)*1000) + "ms")
 			
 	def undelete(self, value):
 		start = timer()
 		recordInfo = self.utilSearch(value, True, True)
-		if not (recordInfo is None):
-			file = self.file
-			with open(file, 'r+b') as f:
+		if recordInfo is None:
+			print("Record not found")
+		else:	
+			with open(self.file, 'r+b') as f:
 				# navigate to the record to be updated
 				f.seek(self.blockSize*(recordInfo["blockLoc"]) + self.recordSize*recordInfo["recordLoc"] + self.fieldSize)
 				# set the deletion bit to 0
 				f.write(b'\x00')
-				print("ARE YOU GOING IN HERE:UNDELETE")	
-		else:
-			print("Record not found")		
+				print("record undeleted")
 		end = timer()
 		if self.times:
-			print("undelete time: " + str((end-start)*1000) + "ms")
+			print("Undelete time: " + str((end-start)*1000) + "ms")
 	
 	def displayHeader(self):
 		print("Block size: " + str(self.blockSize))
 		print("Record size: " + str(self.recordSize))
 		print("Field size: " + str(self.fieldSize))
+		print("Uses strings for key values: " + str(self.strKeys))
 		# print("Number of records: " + str(self.numRecords))
 		# print("Number of records deleted: " + str(self.numRecordsDeleted))
 		print("BFR: " + str(self.bfr))
@@ -259,7 +258,7 @@ class StaticlyHashedFile:
 			self.displayBlock(blockNum)
 			
 	def makeBlock(self, data):
-		return Block(self.blockSize, self.recordSize, self.fieldSize, self.bfr, data)			
+		return Block(self.blockSize, self.recordSize, self.fieldSize, self.bfr, self.strKeys, data)			
 	
 	
 	

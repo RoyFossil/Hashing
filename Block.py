@@ -2,12 +2,13 @@ from Record import *
 
 class Block: 
 	
-	def __init__(self, size, recordSize, fieldSize, bfr, data):
+	def __init__(self, size, recordSize, fieldSize, bfr, strKeys, data):
 		self.size = size
 		# size of entire record (including hashing field)
 		self.recordSize = recordSize
 		self.fieldSize = fieldSize
 		self.bfr = bfr
+		self.strKeys = strKeys
 		self.data = data
 	
 	# returns the index of the available space within a block, -1 if full
@@ -22,7 +23,7 @@ class Block:
 	# only to be used inside this class
 	# makes creating records easier and more clear
 	def makeRecord(self, data):
-		return Record(self.recordSize, self.fieldSize, False, data)
+		return Record(self.recordSize, self.fieldSize, self.strKeys, data)
 		
 	# return pointer value
 	def getPointer(self):
