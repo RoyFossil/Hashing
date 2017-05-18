@@ -24,6 +24,7 @@ class StaticlyHashedFile:
 		# truncates the file
 		with open(self.file, 'wb') as f:
 			f.write(b"This is a shorter less ridiculous file header")
+			self.writeFirstHeaderBlock()
 			f.seek(self.blockSize*2)
 			f.write(bytearray(self.blockSize))
 			
@@ -37,7 +38,7 @@ class StaticlyHashedFile:
 			blockSize = int.from_bytes(f.read(3), byteorder='big')
 			recordSize = int.from_bytes(f.read(3), byteorder='big')
 			fieldSize = int.from_bytes(f.read(3), byteorder='big')
-			# fileSize = int.from_bytes(f.read(3), byteorder='big')
+			fileSize = int.from_bytes(f.read(3), byteorder='big')
 			if f.read(1) == b'\x01':
 				strKeys = True
 			else:
@@ -45,7 +46,7 @@ class StaticlyHashedFile:
 			f.seek(blockSize)
 			# extraFileArgs["numRecords"] = int.from_bytes(f.read(6), byteorder='big')
 			# extraFileArgs["numRecordsDeleted"] = int.from_bytes(f.read(3), byteorder='big')
-		return cls(blockSize, recordSize, fieldSize, fileLoc, strKeys, False)
+		return cls(blockSize, recordSize, fieldSize, fileSize, strKeys, fileLoc)
 	
 	def writeFirstHeaderBlock(self):
 		with open(self.file, 'r+b') as f:
@@ -57,7 +58,7 @@ class StaticlyHashedFile:
 			f.write(self.blockSize.to_bytes(3, byteorder='big'))
 			f.write(self.recordSize.to_bytes(3, byteorder='big'))
 			f.write(self.fieldSize.to_bytes(3, byteorder='big'))
-			# f.write(self.fileSize.to_bytes(3, byteorder='big'))
+			f.write(self.fileSize.to_bytes(3, byteorder='big'))
 			f.write(b'\x00')
 
 	def setStatistics(self, times, workings):
