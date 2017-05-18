@@ -56,15 +56,29 @@ class ExtendibleHashedFile:
 				else:
 					print("Directory is too large to be written to one block")				
 	
+	#def readDirectoryFromHeader(self, globalDepth):
+		#theDirectory = {}
+		#with open(self.file, 'r+b') as f:
+			#f.seek(blockSize)
+			#for pair in range(0, 2**globalDepth):
+				#intKey = int.from_bytes(f.read(1), byteorder='big')
+				#formattedKey = self.getBinary(intKey, globalDepth)
+				#value = int.from_bytes(f.read(1), byteorder='big')
+				#theDirectory[formattedKey] = value
+		#return theDirectory
 	def readDirectoryFromHeader(self, globalDepth):
 		theDirectory = {}
 		with open(self.file, 'r+b') as f:
 			f.seek(blockSize)
-			for pair in range(0, 2**globalDepth):
-				intKey = int.from_bytes(f.read(1), byteorder='big')
-				formattedKey = self.getBinary(intKey, globalDepth)
-				value = int.from_bytes(f.read(1), byteorder='big')
-				theDirectory[formattedKey] = value
+			if globalDepth == 0:
+				f.seek(blockSize+1)
+				theDirectory[''] = int.from_bytes(f.read(1), byteorder='big')
+			else:
+				for pair in range(0, 2**globalDepth):
+					intKey = int.from_bytes(f.read(1), byteorder='big')
+					formattedKey = self.getBinary(intKey, globalDepth)
+					value = int.from_bytes(f.read(1), byteorder='big')
+					theDirectory[formattedKey] = value
 		return theDirectory
 				
 	@classmethod		
