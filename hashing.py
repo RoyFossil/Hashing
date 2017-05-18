@@ -35,18 +35,27 @@ def initStatic():
 			return StaticlyHashedFile(blockSize, recordSize, fieldSize, fileSize, strKeys, path)
 
 def initExtendible():
-	print("Please enter all sizes in bytes.")
-	blockSize = int(input("Enter the block size:  "))
-	recordSize = int(input("Enter the record size:  "))
-	while recordSize > blockSize:	
-		print("Record size must be smaller than block size")
-		recordSize = int(input("Enter the record size:  "))
-	fieldSize = int(input("Enter the size of the field that will be used for hashing: "))
-	while fieldSize > recordSize:	
-		print("Field size must be smaller than record size")
-		fieldSize = int(input("Enter the field size:  "))
-	path = input("Enter the path and name of the file:  ")
-	return ExtendibleHashedFile(blockSize, recordSize, fieldSize, path)
+	while True:
+		choice = input("Would you like to create a (N)ew file or use and (E)xisting one?  ")
+		if choice == 'E' or choice == 'e':
+			path = input("Enter the file location:  ")
+			return ExtendibleHashedFile.fromExistingFile(path)
+		elif choice == 'N' or choice == 'n':
+			print("Please enter all sizes in bytes.")
+			blockSize = int(input("Enter the block size:  "))
+			recordSize = int(input("Enter the record size:  "))
+			while recordSize > blockSize:	
+				print("Record size must be smaller than block size")
+				recordSize = int(input("Enter the record size:  "))
+			fieldSize = int(input("Enter the size of the field that will be used for hashing: "))
+			while fieldSize > recordSize:	
+				print("Field size must be smaller than record size")
+				fieldSize = int(input("Enter the field size:  "))
+			path = input("Enter the path and name of the file:  ")
+			return ExtendibleHashedFile(blockSize, recordSize, fieldSize, path, None)
+		else:
+			print("Please make a valid selection (N or E)")
+
 
 def initLinear():
 	while True:
