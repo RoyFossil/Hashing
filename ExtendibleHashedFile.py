@@ -44,35 +44,48 @@ class ExtendibleHashedFile:
 			self.writeFirstHeaderBlock()
 			self.writeDirectoryToHeader()
 			
-	def writeDirectoryToHeader():
+	
+	def writeDirectoryToHeader(self):
 		with open(self.file, 'r+b') as f:
 			f.seek(self.blockSize)
-			f.write(bytesarray(self.blockSize))
-			for key in self.Directory()
-				if f.tell() >= self.blockSize * 2
+			f.write(bytearray(self.blockSize))
+			for key in self.Directory.keys():
+				if f.tell() < self.blockSize * 2:
 					f.write(int(key,2).to_bytes(1, byteorder = 'big'))
 					f.write(self.Directory[key].to_bytes(1, byteorder = 'big'))
-					
+				else:
+					print("Directory is too large to be written to one block")				
 	
-	def readDirectoryFromHeader():
+	def readDirectoryFromHeader(self, globalDepth):
+		theDirectory = {}
 		with open(self.file, 'r+b') as f:
 			f.seek(blockSize)
-		#	f.write(bytearray(self.blockSize))
-		#	f.seek(0)
-		
+			for pair in range(0, 2**globalDepth):
+				intKey = int.from_bytes(f.read(1), byteorder='big')
+				formattedKey = self.getBinary(intKey, globalDepth)
+				value = int.from_bytes(f.read(1), byteorder='big')
+				theDirectory[formattedKey] = value
+		return theDirectory
+				
 	@classmethod		
 	def fromExistingFile(cls, fileLoc):
-		extraFileArgs["Directory"] = self.readDirectoryFromHeader()
-		#extraFileArgs = {}
+		extraFileArgs = {}
+		theDirectory = {}
 		with open(fileLoc, 'r+b') as f:
 			f.seek(0)
-			#extraFileArgs["Directory"] = int.from_bytes(f.read(3), byteorder='big')
 			extraFileArgs["globalDepth"] = int.from_bytes(f.read(3), byteorder='big')
 			blockSize = int.from_bytes(f.read(3), byteorder='big')
 			recordSize = int.from_bytes(f.read(3), byteorder='big')
 			fieldSize = int.from_bytes(f.read(3), byteorder='big')
 			extraFileArgs["numRecords"] = int.from_bytes(f.read(6), byteorder='big')
 			extraFileArgs["numRecordsDeleted"] = int.from_bytes(f.read(3), byteorder='big')
+			f.seek(blockSize)
+			for pair in range(0, 2**extraFileArgs["globalDepth"]):
+				intKey = int.from_bytes(f.read(1), byteorder='big')
+				formattedKey = cls.getBinary(intKey, extraFileArgs["globalDepth"])
+				value = int.from_bytes(f.read(1), byteorder='big')
+				theDirectory[formattedKey] = value
+		extraFileArgs["Directory"] = theDirectory
 		return cls(blockSize, recordSize, fieldSize, fileLoc, extraFileArgs)		
 		
 	def writeFirstHeaderBlock(self):
@@ -96,17 +109,19 @@ class ExtendibleHashedFile:
 	def h1(self, value):
 		return value % 32
 		
-	def getBinary(self, value):
+	
+	def getBinary(value, length):
 		binary = "{0:b}".format(value)
-		while len(binary) < 5:
+		while len(binary) < length:
 			binary = "0" + binary
 		return binary
 			
 	def getLeftmostBits(self, value, count):
 		if count>0:
-			return self.getBinary(self.h1(value))[:count]
+			return self.getBinary(self.h1(value), 5)[:count]
 		else:
 			return ""
+	
 		
 	def insert(self, value, record):
 		start = timer()
