@@ -63,7 +63,10 @@ class StaticlyHashedFile:
 			f.write(self.recordSize.to_bytes(3, byteorder='big'))
 			f.write(self.fieldSize.to_bytes(3, byteorder='big'))
 			f.write(self.fileSize.to_bytes(3, byteorder='big'))
-			f.write(b'\x00')
+			if self.strKeys:
+				f.write(b'\x01')
+			else:
+				f.write(b'\x00')
 
 	def setStatistics(self, times, workings):
 		self.times = times
