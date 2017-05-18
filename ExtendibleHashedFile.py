@@ -22,7 +22,7 @@ class ExtendibleHashedFile:
 		self.Directory[""] = 2
 	
 		if not (readFileArgs is None):
-			#self.Directory = readFileArgs["Directory"]
+			self.Directory = readFileArgs["Directory"]
 			self.globalDepth = readFileArgs["globalDepth"]
 			self.numRecords = readFileArgs["numRecords"]
 			self.numRecordsDeleted = readFileArgs["numRecordsDeleted"]
@@ -32,7 +32,7 @@ class ExtendibleHashedFile:
 			self.numRecords = 0
 			self.numRecordsDeleted = 0
 			# truncates the file
-			with open(self.file, 'wb') as f:
+			with open(self.file, 'r+b') as f:
 				f.write(b"some header")
 				f.seek(self.blockSize*2)
 				#writes null to the entire first block
@@ -45,7 +45,7 @@ class ExtendibleHashedFile:
 			self.writeDirectoryToHeader()
 			
 	def writeDirectoryToHeader():
-		with open(self.file, 'wb') as f:
+		with open(self.file, 'r+b') as f:
 			f.seek(blockSize)
 			for key in self.Directory()
 				f.write(int(key,2).to_bytes(1, byteorder = 'big'))
