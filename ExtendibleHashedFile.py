@@ -46,10 +46,12 @@ class ExtendibleHashedFile:
 			
 	def writeDirectoryToHeader():
 		with open(self.file, 'r+b') as f:
-			f.seek(blockSize)
+			f.seek(self.blockSize)
+			f.write(bytesarray(self.blockSize))
 			for key in self.Directory()
-				f.write(int(key,2).to_bytes(1, byteorder = 'big'))
-				f.write(self.Directory[key].to_bytes(1, byteorder = 'big'))
+				if f.tell() >= self.blockSize * 2
+					f.write(int(key,2).to_bytes(1, byteorder = 'big'))
+					f.write(self.Directory[key].to_bytes(1, byteorder = 'big'))
 					
 	
 	def readDirectoryFromHeaderHeader():
