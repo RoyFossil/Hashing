@@ -26,6 +26,39 @@ class StaticlyHashedFile:
 			f.write(b"This is a shorter less ridiculous file header")
 			f.seek(self.blockSize*2)
 			f.write(bytearray(self.blockSize))
+			
+	@classmethod
+	def fromExistingFile(cls, fileLoc):
+		# extraFileArgs = {}
+		with open(fileLoc, 'r+b') as f:
+			f.seek(0)
+			# extraFileArgs["n"] = int.from_bytes(f.read(3), byteorder='big')
+			# extraFileArgs["m"] = int.from_bytes(f.read(3), byteorder='big')
+			blockSize = int.from_bytes(f.read(3), byteorder='big')
+			recordSize = int.from_bytes(f.read(3), byteorder='big')
+			fieldSize = int.from_bytes(f.read(3), byteorder='big')
+			# fileSize = int.from_bytes(f.read(3), byteorder='big')
+			if f.read(1) == b'\x01':
+				strKeys = True
+			else:
+				strKeys = False
+			f.seek(blockSize)
+			# extraFileArgs["numRecords"] = int.from_bytes(f.read(6), byteorder='big')
+			# extraFileArgs["numRecordsDeleted"] = int.from_bytes(f.read(3), byteorder='big')
+		return cls(blockSize, recordSize, fieldSize, fileLoc, strKeys, False)
+	
+	def writeFirstHeaderBlock(self):
+		with open(self.file, 'r+b') as f:
+			f.seek(0)
+			f.write(bytearray(self.blockSize))
+			f.seek(0)
+			# f.write(self.n.to_bytes(3, byteorder='big'))
+			# f.write(self.m.to_bytes(3, byteorder='big'))
+			f.write(self.blockSize.to_bytes(3, byteorder='big'))
+			f.write(self.recordSize.to_bytes(3, byteorder='big'))
+			f.write(self.fieldSize.to_bytes(3, byteorder='big'))
+			# f.write(self.fileSize.to_bytes(3, byteorder='big'))
+			f.write(b'\x00')
 
 	def setStatistics(self, times, workings):
 		self.times = times
@@ -148,6 +181,8 @@ class StaticlyHashedFile:
 		theRecord = self.utilSearch(value, False, False)
 		if not (theRecord is None):
 			theRecord.prettyPrint()
+		else:
+			print("Record not found")
 		end = timer()
 		if self.times:
 			print("Search time: " + str((end-start)*1000) + "ms")
@@ -158,11 +193,15 @@ class StaticlyHashedFile:
 		formattedRecord = Record.new(self.recordSize, self.fieldSize, self.strKeys, value, data)
 		recordInfo = self.utilSearch(value, True, False)
 		file = self.file
-		with open(file, 'r+b') as f:
-			# navigate to the record to be updated
-			f.seek(self.blockSize*(recordInfo["blockLoc"]) + self.recordSize*recordInfo["recordLoc"])
-			# write over the old record with new formatted one
-			f.write(formattedRecord.bytes)
+		if not (recordInfo is None):
+			with open(file, 'r+b') as f:
+				# navigate to the record to be updated
+				f.seek(self.blockSize*(recordInfo["blockLoc"]) + self.recordSize*recordInfo["recordLoc"])
+				# write over the old record with new formatted one
+				f.write(formattedRecord.bytes)
+				print("record updated")
+		else:
+				print("record not found")
 		end = timer()
 		if self.times:
 			print("update time: " + str((end-start)*1000) + "ms")
