@@ -4,7 +4,7 @@ import math
 from timeit import default_timer as timer
 
 class StaticlyHashedFile:
-	def __init__(self, blockSize, recordSize, fieldSize, fileSize, strKeys, fileLoc):
+	def __init__(self, blockSize, recordSize, fieldSize, fileSize, strKeys,readFileArgs,   fileLoc):
 		self.file = fileLoc
 		self.blockSize = blockSize
 		self.strKeys = strKeys
@@ -21,20 +21,23 @@ class StaticlyHashedFile:
 		self.workings = False
 		self.maxnoOfEntries= (self.bfr*fileSize)
 		self.noOfEntries=0
-		# truncates the file
-		with open(self.file, 'wb') as f:
-			f.write(b"This is a shorter less ridiculous file header")
-			self.writeFirstHeaderBlock()
-			f.seek(self.blockSize*2)
-			f.write(bytearray(self.blockSize))
-			
+		if not (readFileArgs is None):
+			print("read from exisitng file")
+		else:
+			# truncates the file
+			with open(self.file, 'wb') as f:
+				f.seek(self.blockSize*2)
+				f.write(bytearray(self.blockSize))
+				self.writeFirstHeaderBlock()
+				
 	@classmethod
 	def fromExistingFile(cls, fileLoc):
-		# extraFileArgs = {}
+		extraFileArgs = {}
 		with open(fileLoc, 'r+b') as f:
 			f.seek(0)
-			# extraFileArgs["n"] = int.from_bytes(f.read(3), byteorder='big')
+			# extraFileArgs["fileSize"] = int.from_bytes(f.read(3), byteorder='big')
 			# extraFileArgs["m"] = int.from_bytes(f.read(3), byteorder='big')
+			# fileSize = int.from_bytes(f.read(3), byteorder='big')
 			blockSize = int.from_bytes(f.read(3), byteorder='big')
 			recordSize = int.from_bytes(f.read(3), byteorder='big')
 			fieldSize = int.from_bytes(f.read(3), byteorder='big')
@@ -46,7 +49,7 @@ class StaticlyHashedFile:
 			f.seek(blockSize)
 			# extraFileArgs["numRecords"] = int.from_bytes(f.read(6), byteorder='big')
 			# extraFileArgs["numRecordsDeleted"] = int.from_bytes(f.read(3), byteorder='big')
-		return cls(blockSize, recordSize, fieldSize, fileSize, strKeys, fileLoc)
+		return cls(blockSize, recordSize, fieldSize, fileSize, strKeys, extraFileArgs, fileLoc)
 	
 	def writeFirstHeaderBlock(self):
 		with open(self.file, 'r+b') as f:
@@ -55,6 +58,7 @@ class StaticlyHashedFile:
 			f.seek(0)
 			# f.write(self.n.to_bytes(3, byteorder='big'))
 			# f.write(self.m.to_bytes(3, byteorder='big'))
+			# f.write(self.fileSize.to_bytes(3, byteorder='big'))
 			f.write(self.blockSize.to_bytes(3, byteorder='big'))
 			f.write(self.recordSize.to_bytes(3, byteorder='big'))
 			f.write(self.fieldSize.to_bytes(3, byteorder='big'))
