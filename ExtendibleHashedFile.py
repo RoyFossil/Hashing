@@ -54,7 +54,7 @@ class ExtendibleHashedFile:
 					f.write(self.Directory[key].to_bytes(1, byteorder = 'big'))
 					
 	
-	def readDirectoryFromHeaderHeader():
+	def readDirectoryFromHeader():
 		with open(self.file, 'r+b') as f:
 			f.seek(blockSize)
 		#	f.write(bytearray(self.blockSize))
@@ -62,7 +62,8 @@ class ExtendibleHashedFile:
 		
 	@classmethod		
 	def fromExistingFile(cls, fileLoc):
-		extraFileArgs = {}
+		extraFileArgs["Directory"] = self.readDirectoryFromHeader()
+		#extraFileArgs = {}
 		with open(fileLoc, 'r+b') as f:
 			f.seek(0)
 			#extraFileArgs["Directory"] = int.from_bytes(f.read(3), byteorder='big')
