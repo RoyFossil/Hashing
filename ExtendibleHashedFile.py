@@ -21,7 +21,16 @@ class ExtendibleHashedFile:
 		self.numRecords = 0
 		self.Directory = {}
 		self.Directory[""] = 2
-	
+	#if not (readFileArgs is None):
+			#self.m = readFileArgs["m"]
+			#self.n = readFileArgs["n"]
+			#self.numRecords = readFileArgs["numRecords"]
+			#self.numRecordsDeleted = readFileArgs["numRecordsDeleted"]
+		#else:
+			#self.m = 1
+			#self.n = 0
+			#self.numRecords = 0
+			#self.numRecordsDeleted = 0
 		# truncates the file
 		with open(self.file, 'wb') as f:
 			f.write(b"some header")
@@ -394,7 +403,20 @@ class ExtendibleHashedFile:
 		print(numBlocks)
 		for bucket in range(2, numBlocks):
 			self.displayBlock(bucket)
-			
+	def readDirectoryFromHeader(self, globalDepth):
+		theDirectory = {}
+		with open(self.file, 'r+b') as f:
+			f.seek(blockSize)
+			if globalDepth == 0:
+				f.seek(blockSize+1)
+				theDirectory[''] = int.from_bytes(f.read(1), byteorder='big')
+			else:
+				for pair in range(0, 2**globalDepth):
+					intKey = int.from_bytes(f.read(1), byteorder='big')
+					formattedKey = self.getBinary(intKey, globalDepth)
+					value = int.from_bytes(f.read(1), byteorder='big')
+					theDirectory[formattedKey] = value
+		return theDirectory		
 	#def displayHeader(self):
 		#print("n: " + str(self.n))
 		#print("m: " + str(self.m))
