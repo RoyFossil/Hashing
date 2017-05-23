@@ -4,7 +4,7 @@ import math
 from timeit import default_timer as timer
 class ExtendibleHashedFile:
 
-	def __init__(self, blockSize, recordSize, fieldSize, fileLoc, readFileArgs):
+	def __init__(self, blockSize, recordSize, fieldSize, fileLoc):
 		self.file = fileLoc
 		self.blockSize = blockSize
 		# record size supplied by user should include the hash field size
@@ -17,125 +17,55 @@ class ExtendibleHashedFile:
 		self.nextAvailableBucket = 3
 		self.times = False
 		self.workings = False
-		#self.numRecords = 0
+		self.numRecords = 0
 		self.Directory = {}
 		self.Directory[""] = 2
 	
-		if not (readFileArgs is None):
-			self.Directory = readFileArgs["Directory"]
-			self.globalDepth = readFileArgs["globalDepth"]
-			self.numRecords = readFileArgs["numRecords"]
-			self.numRecordsDeleted = readFileArgs["numRecordsDeleted"]
-		else:
-			self.Directory = 1
-			self.globalDepth = 0
-			self.numRecords = 0
-			self.numRecordsDeleted = 0
-			# truncates the file
-			with open(self.file, 'r+b') as f:
-				f.write(b"some header")
-				f.seek(self.blockSize*2)
-				#writes null to the entire first block
-				f.write(bytearray(self.blockSize))
-				# set local depth to 0
-				f.seek(self.blockSize*3 - self.depthSize)
-				# update local depth value
-				f.write((0).to_bytes(self.depthSize, byteorder='big'))	
-			self.writeFirstHeaderBlock()
-			self.writeDirectoryToHeader()
-			
-	
-	def writeDirectoryToHeader(self):
-		with open(self.file, 'r+b') as f:
-			f.seek(self.blockSize)
+		# truncates the file
+		with open(self.file, 'wb') as f:
+			f.write(b"some header")
+			f.seek(self.blockSize*2)
 			f.write(bytearray(self.blockSize))
-			for key in self.Directory.keys():
-				if f.tell() < self.blockSize * 2:
-					f.write(int(key,2).to_bytes(1, byteorder = 'big'))
-					f.write(self.Directory[key].to_bytes(1, byteorder = 'big'))
-				else:
-					print("Directory is too large to be written to one block")				
+			# set local depth to 0
+			f.seek(self.blockSize*3 - self.depthSize)
+			# update local depth value
+			f.write((0).to_bytes(self.depthSize, byteorder='big'))
 	
-	#def readDirectoryFromHeader(self, globalDepth):
-		#theDirectory = {}
-		#with open(self.file, 'r+b') as f:
-			#f.seek(blockSize)
-			#for pair in range(0, 2**globalDepth):
-				#intKey = int.from_bytes(f.read(1), byteorder='big')
-				#formattedKey = self.getBinary(intKey, globalDepth)
-				#value = int.from_bytes(f.read(1), byteorder='big')
-				#theDirectory[formattedKey] = value
-		#return theDirectory
-	def readDirectoryFromHeader(self, globalDepth):
-		theDirectory = {}
-		with open(self.file, 'r+b') as f:
-			f.seek(blockSize)
-			if globalDepth == 0:
-				f.seek(blockSize+1)
-				theDirectory[''] = int.from_bytes(f.read(1), byteorder='big')
-			else:
-				for pair in range(0, 2**globalDepth):
-					intKey = int.from_bytes(f.read(1), byteorder='big')
-					formattedKey = self.getBinary(intKey, globalDepth)
-					value = int.from_bytes(f.read(1), byteorder='big')
-					theDirectory[formattedKey] = value
-		return theDirectory
-				
-	@classmethod		
-	def fromExistingFile(cls, fileLoc):
-		extraFileArgs = {}
-		theDirectory = {}
-		with open(fileLoc, 'r+b') as f:
-			f.seek(0)
-			extraFileArgs["globalDepth"] = int.from_bytes(f.read(3), byteorder='big')
-			blockSize = int.from_bytes(f.read(3), byteorder='big')
-			recordSize = int.from_bytes(f.read(3), byteorder='big')
-			fieldSize = int.from_bytes(f.read(3), byteorder='big')
-			extraFileArgs["numRecords"] = int.from_bytes(f.read(6), byteorder='big')
-			extraFileArgs["numRecordsDeleted"] = int.from_bytes(f.read(3), byteorder='big')
-			f.seek(blockSize)
-			for pair in range(0, 2**extraFileArgs["globalDepth"]):
-				intKey = int.from_bytes(f.read(1), byteorder='big')
-				formattedKey = cls.getBinary(intKey, extraFileArgs["globalDepth"])
-				value = int.from_bytes(f.read(1), byteorder='big')
-				theDirectory[formattedKey] = value
-		extraFileArgs["Directory"] = theDirectory
-		return cls(blockSize, recordSize, fieldSize, fileLoc, extraFileArgs)		
-		
 	def writeFirstHeaderBlock(self):
 		with open(self.file, 'r+b') as f:
 			f.seek(0)
 			f.write(bytearray(self.blockSize))
 			f.seek(0)
-			f.write(self.globalDepth.to_bytes(3, byteorder='big'))
+			f.write(self.n.to_bytes(3, byteorder='big'))
+			f.write(self.m.to_bytes(3, byteorder='big'))
 			f.write(self.blockSize.to_bytes(3, byteorder='big'))
 			f.write(self.recordSize.to_bytes(3, byteorder='big'))
 			f.write(self.fieldSize.to_bytes(3, byteorder='big'))
-			f.write(self.numRecords.to_bytes(6, byteorder = 'big'))
-			f.write(self.numRecordsDeleted.to_bytes(3, byteorder= 'big'))
 			
-	
-	
-	def setStatistics(self, times, workings):
-		self.times = times
-		self.workings = workings
+	def writeSecondHeaderBlock(self):
+		with open(self.file, 'r+b') as f:
+			f.seek(self.blockSize)
+			f.write(bytearray(self.blockSize))
+			f.seek(self.blockSize)
+			f.write(self.numRecords.to_bytes(6, byteorder='big'))
+			f.write(self.numRecordsDeleted.to_bytes(3, byteorder='big'))
+			f.write(self.bfr.to_bytes(1, byteorder='big'))
+			f.write(self.numRecords.to_bytes(6, byteorder='big'))
 	
 	def h1(self, value):
 		return value % 32
 		
-	
-	def getBinary(value, length):
+	def getBinary(self, value):
 		binary = "{0:b}".format(value)
-		while len(binary) < length:
+		while len(binary) < 5:
 			binary = "0" + binary
 		return binary
 			
 	def getLeftmostBits(self, value, count):
 		if count>0:
-			return self.getBinary(self.h1(value), 5)[:count]
+			return self.getBinary(self.h1(value))[:count]
 		else:
 			return ""
-	
 		
 	def insert(self, value, record):
 		start = timer()
