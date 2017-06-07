@@ -4,7 +4,7 @@ import math
 from timeit import default_timer as timer
 
 class StaticlyHashedFile:
-	def __init__(self, blockSize, recordSize, fieldSize, fileSize, strKeys,readFileArgs,   fileLoc):
+	def __init__(self, blockSize, recordSize, fieldSize, fileSize, strKeys, readFileArgs, fileLoc):
 		self.file = fileLoc
 		self.blockSize = blockSize
 		self.strKeys = strKeys
@@ -14,9 +14,9 @@ class StaticlyHashedFile:
 		# we should just notify the user that the available space for data is 
 		# record size - (fieldSize + 1) and plus one is for deletion marker.
 		self.recordSize = recordSize
-		self.fieldSize = fieldSize
+		self.fieldSize = fieldSize 
 		self.fileSize = fileSize
-		self.bfr = math.floor((blockSize)/recordSize)
+		self.bfr = math.floor((self.blockSize)/recordSize)
 		self.times = False
 		self.workings = False
 		self.maxnoOfEntries= (self.bfr*fileSize)
@@ -87,6 +87,17 @@ class StaticlyHashedFile:
 			sum += ord(c)
 		return sum
 	
+	def inputFile(self):
+		file = open('C:/LN/strings.txt') 
+		str = file.read();
+		final_list= list()
+		line=str.split()
+		for words in line:
+			##print (line)
+			final_list.append(words)
+		print (final_list)
+		##print ("reading " ,str)
+
 	def insert(self, value, record):
 		start = timer()
 		if self.workings:
@@ -130,17 +141,18 @@ class StaticlyHashedFile:
 						# there has been a collision. handle it
 						if self.workings:
 							print("The bucket is full, write the record to next available one.")
-						print("move to the next available space")
+						# print("move to the next available space")
 						print("overflow here" +  str(formattedRecord.getHashValue()) + " did it.")
 						# check to see if data exists in the next avilable bucket
 						bucket+=1
 						if bucket >= self.fileSize:
+							self.fileSize = self.fileSize * 2
 							bucket = 2
-						# else:	
-							# print("you're fine")
-								
+							print("nahhhh dude, file's full,wait,extending file size ")
+					
 		else:
-			print("nahhhh dude, file's full")
+			print("tooo much ")
+			# self.fileSize = fileSize * 2
 		end = timer()
 		if self.times:
 			print("Insert time: " + str((end-start)*1000) + "ms")	
@@ -194,6 +206,8 @@ class StaticlyHashedFile:
 		end = timer()
 		if self.times:
 			print("Search time: " + str((end-start)*1000) + "ms")
+			theRecord+=1
+			
 				
 						
 	def update(self, value, data):
@@ -229,7 +243,20 @@ class StaticlyHashedFile:
 		end = timer()
 		if self.times:
 			print("Delete time: " + str((end-start)*1000) + "ms")
+			print ("House keeping operations are performed")	
+		# self.houseKeeping(value)
+	
+	# def houseKeeping(self, value):
+		# self.h1(value)
+		# bucket = (self.h1(value)) + 2
+		# print("house keeping values")
+		# bucket=+1
+		# if bucket >= self.fileSize:
+			# self.fileSize = self.fileSize 
+			# bucket = 2
+		# print("House keeping is done")
 			
+				
 	def undelete(self, value):
 		start = timer()
 		recordInfo = self.utilSearch(value, True, True)
@@ -257,6 +284,8 @@ class StaticlyHashedFile:
 		
 	def displayBlock(self, blockNum):
 		file = self.file
+		# firstNum = self.firstNum
+		# lastNum = self.lastNum
 		blockNum+=2
 		blockLabel = blockNum - 2
 		with open(file, 'rb') as f:
@@ -287,6 +316,7 @@ class StaticlyHashedFile:
 					print("|" + " "*(self.fieldSize) + "|" + " "*(self.recordSize-(self.fieldSize + 1)) + "|")
 					linesWritten+=1
 					print(1 + self.recordSize + 1)
+			
 
 	def printTabOrBucketNum(self, linesWritten, labelLoc, blockNum, blockLabel):
 		if(linesWritten == labelLoc - 1):
@@ -302,6 +332,27 @@ class StaticlyHashedFile:
 			numBytes = f.tell()
 			numBlocks = math.ceil(numBytes/self.blockSize)
 		for blockNum in range(0, numBlocks-2):
+			self.displayBlock(blockNum)
+			
+	def displayRange(self, withHeader, firstNum, lastNum):
+		print("enter a specific block to be displayed")
+		if withHeader:
+			self.displayHeader()
+		with open(self.file, 'rb') as f:
+			f.seek(0, 2)
+			numBytes = f.tell()
+			numBlocks = math.ceil(numBytes/self.blockSize)
+		for blockNum in range(firstNum, lastNum):
+			self.displayBlock(blockNum)
+					
+	def displayspecificBlock(self, withHeader, blockNum):
+		print("enter a specific block to be displayed")
+		if withHeader:
+			self.displayHeader()
+		with open(self.file, 'rb') as f:
+			f.seek(0, 2)
+			numBytes = f.tell()
+			numBlocks = math.ceil(numBytes/self.blockSize)
 			self.displayBlock(blockNum)
 			
 	def makeBlock(self, data):

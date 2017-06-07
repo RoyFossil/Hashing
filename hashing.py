@@ -5,6 +5,15 @@ import random
 
 def initStatic():
 	while True:
+		choice = input("would you like to access it from an input file?")
+		if choice == 'Y' or choice == 'y' :
+			print("Accessing input file")
+			# path=input("Enter the file location where user has to load it from:")
+			# return StaticlyHashedFile.inputFile(self)
+		elif choice == 'N' or choice =='n' :
+			print("enter it as per user requirement")
+			path = input("Enter the file location:  ")
+			return StaticlyHashedFile.inputFile(path)
 		choice = input("Would you like to create a (N)ew file or use and (E)xisting one?  ")
 		if choice == 'E' or choice == 'e':
 			path = input("Enter the file location:  ")
@@ -35,39 +44,18 @@ def initStatic():
 			return StaticlyHashedFile(blockSize, recordSize, fieldSize, fileSize, strKeys, None, path)
 
 def initExtendible():
-	while True:
-		choice = input("Would you like to create a (N)ew file or use and (E)xisting one?  ")
-		if choice == 'E' or choice == 'e':
-			path = input("Enter the file location:  ")
-			return ExtendibleHashedFile.fromExistingFile(path)
-		elif choice == 'N' or choice == 'n':
-			print("Please enter all sizes in bytes.")
-			blockSize = int(input("Enter the block size:  "))
-			recordSize = int(input("Enter the record size:  "))
-	#print("Please enter all sizes in bytes.")
-	#blockSize = int(input("Enter the block size:  "))
-	#recordSize = int(input("Enter the record size:  "))
-			while recordSize > blockSize:	
-				print("Record size must be smaller than block size")
-				recordSize = int(input("Enter the record size:  "))
-			fieldSize = int(input("Enter the size of the field that will be used for hashing: "))
-			while fieldSize > recordSize:	
-				print("Field size must be smaller than record size")
-				fieldSize = int(input("Enter the field size:  "))
-			path = input("Enter the path and name of the file:  ")
-			while True:
-				choice = input("Will your hashing field be of type string? (Y/N) ")
-				if choice == 'Y' or choice == 'y':
-					strKeys = True
-					break
-				elif choice == 'N' or choice == 'n':
-					strKeys = False
-					break
-				else:
-					print("Please make a valid selection (Y or N)")
-			return ExtendibleHashedFile(blockSize, recordSize, fieldSize, path, strKeys, None)
-		else:
-			print("Please make a valid selection (N or E)")
+	print("Please enter all sizes in bytes.")
+	blockSize = int(input("Enter the block size:  "))
+	recordSize = int(input("Enter the record size:  "))
+	while recordSize > blockSize:	
+		print("Record size must be smaller than block size")
+		recordSize = int(input("Enter the record size:  "))
+	fieldSize = int(input("Enter the size of the field that will be used for hashing: "))
+	while fieldSize > recordSize:	
+		print("Field size must be smaller than record size")
+		fieldSize = int(input("Enter the field size:  "))
+	path = input("Enter the path and name of the file:  ")
+	return ExtendibleHashedFile(blockSize, recordSize, fieldSize, path)
 
 def initLinear():
 	while True:
@@ -110,8 +98,10 @@ def menu(file, type):
 		print("   4: Delete")
 		print("   5: Undelete")
 		print("   6: Display")
-		print("   7: Print statistics")
-		print("   8: Quit")
+		print("   7 : DisplaRange")
+		print("   8 : DisplayBlock")
+		print("   9: Print statistics")
+		print("   10: Quit")
 		choice = input("")
 		print("")
 		if choice == '1':
@@ -141,6 +131,7 @@ def menu(file, type):
 			if not hasattr(file, "strKeys") or not file.strKeys:
 				keyVal = int(keyVal)
 			file.undelete(keyVal)
+			
 		elif choice == '6':
 			while True:
 				withHeader = input("Would you like to display the file header? (Y/N) ")
@@ -153,7 +144,41 @@ def menu(file, type):
 				else:
 					print("Please make a valid selection (Y or N)")
 			file.display(withHeader)
-		elif choice == '7':
+			
+		elif choice =='7':
+			firstNum = input("please enter the first number:")
+			lastNum = input("please enter the last number:")
+			while True:
+				withHeader = input("Would you like to display the file header? (Y/N) ")
+				if withHeader == 'Y' or withHeader == 'y':
+					withHeader = True
+					break
+				elif withHeader == 'N' or withHeader == 'n':
+					withHeader = False
+					break
+				else:
+					print("Please make a valid selection (Y or N)")
+			firstNum= int(firstNum)
+			lastNum =int(lastNum)
+			file.displayRange(withHeader, firstNum, lastNum) 
+			
+		elif choice =='8':
+			blockNum = input("please enter the block number:")
+			while True:
+				withHeader = input("Would you like to display the file header? (Y/N) ")
+				if withHeader == 'Y' or withHeader == 'y':
+					withHeader = True
+					break
+				elif withHeader == 'N' or withHeader == 'n':
+					withHeader = False
+					break
+				else:
+					print("Please make a valid selection (Y or N)")
+			blockNum= int(blockNum)
+			file.displayspecificBlock(withHeader, blockNum) 
+			
+				
+		elif choice == '9':
 			print("There are two options for printing statistics.")
 			print("Print times will display the amount of time a function takes to execute.")
 			print("Print workings will display information about navigating through the file.")
@@ -179,7 +204,7 @@ def menu(file, type):
 				else:
 					print("Please make a valid selection (Y or N)")
 			file.setStatistics(times, workings)
-		elif choice == '8':
+		elif choice == '10':
 			break
 		else:
 			print("Please make a valid selection (1-8)")
