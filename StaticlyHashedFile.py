@@ -4,7 +4,8 @@ import math
 from timeit import default_timer as timer
 
 class StaticlyHashedFile:
-	def __init__(self, blockSize, recordSize, fieldSize, fileSize, strKeys, readFileArgs, fileLoc):
+	def __init__(self, blockSize, recordSize, fieldSize, fileSize, strKeys, readFileArgs, fileLoc, textLoc):
+		self.textLoc = textLoc
 		self.file = fileLoc
 		self.blockSize = blockSize
 		self.strKeys = strKeys
@@ -49,7 +50,8 @@ class StaticlyHashedFile:
 			f.seek(blockSize)
 			# extraFileArgs["numRecords"] = int.from_bytes(f.read(6), byteorder='big')
 			# extraFileArgs["numRecordsDeleted"] = int.from_bytes(f.read(3), byteorder='big')
-		return cls(blockSize, recordSize, fieldSize, fileSize, strKeys, extraFileArgs, fileLoc)
+		return cls(blockSize, recordSize, fieldSize, fileSize, strKeys, extraFileArgs, fileLoc , textLoc)
+		
 	
 	def writeFirstHeaderBlock(self):
 		with open(self.file, 'r+b') as f:
@@ -87,72 +89,130 @@ class StaticlyHashedFile:
 			sum += ord(c)
 		return sum
 	
-	def inputFile(self):
-		file = open('C:/LN/strings.txt') 
-		str = file.read();
-		final_list= list()
-		line=str.split()
-		for words in line:
-			##print (line)
-			final_list.append(words)
-		print (final_list)
-		##print ("reading " ,str)
+	def inputFile(textLoc):
+			with open(textLoc, 'r') as f:
+				f.seek(0)
+				answer = {}
+				for words in f:
+					k, v = words.strip().split(' ')
+					answer[k.strip()] = v.strip()
+				# file = open('C:/LN/strings.txt') 
+				# str = f.read();
+				# final_list= list()
+				# line=str.split()
+				# for words in line:
+					# ##print (line)
+					# final_list.append(words)
+				# print (final_list)
+				# print ("reading " ,str)
 
-	def insert(self, value, record):
+	def insert(self, value, record,typeOfAlgortihm):
 		start = timer()
 		if self.workings:
 			print("Search for key value first to ensure record does not already exist.")
-			
+	
 		if not (self.utilSearch(value, False, False) is None):
 			print("Record with that key already exists, cannot insert.")
 			return
 			
 		if self.workings:
 			print("Begin insert.")
+		
+		if typeOfAlgortihm =='l' or typeOfAlgortihm =='L':
+		
+			if self.noOfEntries < self.maxnoOfEntries:
+				# used to accept strings
+				intValue = self.formatValue(value)
+				# pass value to first hash function
+				bucket = (self.h1(intValue)) + 2
+				if self.workings:
+					print(str(value) + " maps to bucket " + str(bucket))
+				formattedRecord = Record.new(self.recordSize, self.fieldSize, False, value, record)
+				with open(self.file, 'r+b') as f:
+					# navigate to the appropriate bucket
+					# plus 2 is to account for the header
+					numChecked = 0
+					while numChecked < self.fileSize:
+						f.seek(self.blockSize*(bucket))
+						# check to see if data exists in this bucket
+						if self.workings:
+							print("Navigate to bucket " + str(bucket))
+						theBlock = self.makeBlock(f.read(self.blockSize))
+						space = theBlock.hasSpace()
+						if space>=0:
+							if self.workings:
+								print("Space " + str(space) + " is available in this bucket.")
+							f.seek(self.blockSize*(bucket) + self.recordSize*space)
+							f.write(formattedRecord.bytes)
+							self.noOfEntries+=1
+							break
+						else:
+							numChecked+=1
+							# there has been a collision. handle it
+							if self.workings:
+								print("The bucket is full, write the record to next available one.")
+							# print("move to the next available space")
+							print("overflow here" +  str(formattedRecord.getHashValue()) + " did it.")
+							# check to see if data exists in the next avilable bucket
+							bucket+=1
+							if bucket >= self.fileSize:
+								self.fileSize = self.fileSize * 2
+								bucket = 2
+								print("nahhhh dude, file's full,wait,extending file size ")
+						
+			else:
+				print("tooo much ")
+				# self.fileSize = fileSize * 2
+		
+		elif typeOfAlgortihm =='DH' or typeOfAlgortihm == 'dh' :
+			print("Entering into DH mode")
 			
-		if self.noOfEntries < self.maxnoOfEntries:
-			# used to accept strings
-			intValue = self.formatValue(value)
-			# pass value to first hash function
-			bucket = (self.h1(intValue)) + 2
-			if self.workings:
-				print(str(value) + " maps to bucket " + str(bucket))
-			formattedRecord = Record.new(self.recordSize, self.fieldSize, False, value, record)
-			with open(self.file, 'r+b') as f:
-				# navigate to the appropriate bucket
-				# plus 2 is to account for the header
-				numChecked = 0
-				while numChecked < self.fileSize:
-					f.seek(self.blockSize*(bucket))
-					# check to see if data exists in this bucket
-					if self.workings:
-						print("Navigate to bucket " + str(bucket))
-					theBlock = self.makeBlock(f.read(self.blockSize))
-					space = theBlock.hasSpace()
-					if space>=0:
+			if self.noOfEntries < self.maxnoOfEntries:
+				# used to accept strings
+				intValue = self.formatValue(value)
+				# pass value to first hash function
+				bucket = (self.h1(intValue)) + 2
+				if self.workings:
+					print(str(value) + " maps to bucket " + str(bucket))
+				formattedRecord = Record.new(self.recordSize, self.fieldSize, False, value, record)
+				with open(self.file, 'r+b') as f:
+					# navigate to the appropriate bucket
+					# plus 2 is to account for the header
+					numChecked = 0
+					while numChecked < self.fileSize:
+						f.seek(self.blockSize*(bucket))
+						# check to see if data exists in this bucket
 						if self.workings:
-							print("Space " + str(space) + " is available in this bucket.")
-						f.seek(self.blockSize*(bucket) + self.recordSize*space)
-						f.write(formattedRecord.bytes)
-						self.noOfEntries+=1
-						break
-					else:
-						numChecked+=1
-						# there has been a collision. handle it
-						if self.workings:
-							print("The bucket is full, write the record to next available one.")
-						# print("move to the next available space")
-						print("overflow here" +  str(formattedRecord.getHashValue()) + " did it.")
-						# check to see if data exists in the next avilable bucket
-						bucket+=1
-						if bucket >= self.fileSize:
-							self.fileSize = self.fileSize * 2
-							bucket = 2
-							print("nahhhh dude, file's full,wait,extending file size ")
-					
-		else:
-			print("tooo much ")
-			# self.fileSize = fileSize * 2
+							print("Navigate to bucket " + str(bucket))
+						theBlock = self.makeBlock(f.read(self.blockSize))
+						space = theBlock.hasSpace()
+						if space>=0:
+							if self.workings:
+								print("Space " + str(space) + " is available in this bucket.")
+							f.seek(self.blockSize*(bucket) + self.recordSize*space)
+							f.write(formattedRecord.bytes)
+							self.noOfEntries+=1
+							break
+						else:
+							numChecked+=1
+							# there has been a collision. handle it
+							if self.workings:
+								print("The bucket is full, write the record to next available one.")
+							# print("move to the next available space")
+							# check to see if data exists in the next avilable bucket
+							bucket = (bucket + (2*value)) % self.fileSize
+							print("overflow here" +  str(formattedRecord.getHashValue()) + " did it.")
+							print("Entering into DH mode")
+							if bucket >= self.fileSize:
+								self.fileSize = self.fileSize * 2
+								bucket = 2
+								print("nahhhh dude, file's full,wait,extending file size ")
+						
+			else:
+				print("tooo much ")
+				# self.fileSize = fileSize * 2
+		
+		
 		end = timer()
 		if self.times:
 			print("Insert time: " + str((end-start)*1000) + "ms")	
