@@ -272,6 +272,7 @@ class StaticlyHashedFile:
 						
 	def update(self, value, data):
 		start = timer()
+
 		formattedRecord = Record.new(self.recordSize, self.fieldSize, self.strKeys, value, data)
 		recordInfo = self.utilSearch(value, True, False)
 		file = self.file
@@ -284,6 +285,7 @@ class StaticlyHashedFile:
 				print("record updated")
 		else:
 				print("record not found")
+
 		end = timer()
 		if self.times:
 			print("update time: " + str((end-start)*1000) + "ms")
