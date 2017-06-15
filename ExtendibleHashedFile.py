@@ -4,9 +4,10 @@ import math
 from timeit import default_timer as timer
 class ExtendibleHashedFile:
 
-	def __init__(self, blockSize, recordSize, fieldSize, fileLoc):
+	def __init__(self, blockSize, recordSize, fieldSize, fileLoc, strKeys, readFileArgs):
 		self.file = fileLoc
 		self.blockSize = blockSize
+		self.strKeys = strKeys
 		# record size supplied by user should include the hash field size
 		# 1 is added for the deletion marker
 		self.recordSize = recordSize + 1
@@ -20,7 +21,16 @@ class ExtendibleHashedFile:
 		self.numRecords = 0
 		self.Directory = {}
 		self.Directory[""] = 2
-	
+	#if not (readFileArgs is None):
+			#self.m = readFileArgs["m"]
+			#self.n = readFileArgs["n"]
+			#self.numRecords = readFileArgs["numRecords"]
+			#self.numRecordsDeleted = readFileArgs["numRecordsDeleted"]
+		#else:
+			#self.m = 1
+			#self.n = 0
+			#self.numRecords = 0
+			#self.numRecordsDeleted = 0
 		# truncates the file
 		with open(self.file, 'wb') as f:
 			f.write(b"some header")
@@ -31,6 +41,30 @@ class ExtendibleHashedFile:
 			# update local depth value
 			f.write((0).to_bytes(self.depthSize, byteorder='big'))
 	
+	@classmethod
+	def fromExistingFile(cls, fileLoc):
+		extraFileArgs = {}
+		theDirectory = {}
+		with open(fileLoc, 'r+b') as f:
+			f.seek(0)
+			extraFileArgs["globalDepth"] = int.from_bytes(f.read(3), byteorder='big')
+			blockSize = int.from_bytes(f.read(3), byteorder='big')
+			recordSize = int.from_bytes(f.read(3), byteorder='big')
+			fieldSize = int.from_bytes(f.read(3), byteorder='big')
+			if f.read(1) == b'\x01':
+				strKeys = True
+			else:
+				strKeys = False
+			f.seek(blockSize)
+			extraFileArgs["numRecords"] = int.from_bytes(f.read(6), byteorder='big')
+			extraFileArgs["numRecordsDeleted"] = int.from_bytes(f.read(3), byteorder='big')
+			for pair in range(0, 2**extraFileArgs["globalDepth"]):
+				intKey = int.from_bytes(f.read(1), byteorder='big')
+				formattedKey = cls.getBinary(intKey, extraFileArgs["globalDepth"])
+				value = int.from_bytes(f.read(1), byteorder='big')
+				theDirectory[formattedKey] = value
+		extraFileArgs["Directory"] = theDirectory
+		return cls(blockSize, recordSize, fieldSize, fileLoc, strKeys, extraFileArgs)		
 	def writeFirstHeaderBlock(self):
 		with open(self.file, 'r+b') as f:
 			f.seek(0)
@@ -41,7 +75,10 @@ class ExtendibleHashedFile:
 			f.write(self.blockSize.to_bytes(3, byteorder='big'))
 			f.write(self.recordSize.to_bytes(3, byteorder='big'))
 			f.write(self.fieldSize.to_bytes(3, byteorder='big'))
-			
+			if self.strKeys:
+				f.write(b'\x01')
+			else:
+				f.write(b'\x00')
 	def writeSecondHeaderBlock(self):
 		with open(self.file, 'r+b') as f:
 			f.seek(self.blockSize)
@@ -312,17 +349,9 @@ class ExtendibleHashedFile:
 		if self.times:
 			print("Undelete time: " + str((end-start)*1000) + "ms")
 
-	def displayHeader(self):
-		print()
-		print("globalDepth" + str(self.globalDepth))
-		print("Bucket: ")
-		print("Block size: " + str(self.blockSize))
-		print("Record size: " + str(self.recordSize))
-		print("Field size: "  + str(self.fieldSize))
-		print("Number of records:"+ str(self.numRecords))
-		print("Number of records deleted:") 
-		print("BFR: " + str(self.bfr))
-		print("Distinct values: ") 
+	def setStatistics(self, times, workings):
+		self.times = times
+		self.workings = workings
 	
 	def displayBlock(self, bucket):
 		with open(self.file, 'r+b', buffering=self.blockSize) as f:
@@ -373,6 +402,31 @@ class ExtendibleHashedFile:
 		print(numBlocks)
 		for bucket in range(2, numBlocks):
 			self.displayBlock(bucket)
+	def readDirectoryFromHeader(self, globalDepth):
+		theDirectory = {}
+		with open(self.file, 'r+b') as f:
+			f.seek(blockSize)
+			if globalDepth == 0:
+				f.seek(blockSize+1)
+				theDirectory[''] = int.from_bytes(f.read(1), byteorder='big')
+			else:
+				for pair in range(0, 2**globalDepth):
+					intKey = int.from_bytes(f.read(1), byteorder='big')
+					formattedKey = self.getBinary(intKey, globalDepth)
+					value = int.from_bytes(f.read(1), byteorder='big')
+					theDirectory[formattedKey] = value
+		return theDirectory		
+	#def displayHeader(self):
+		#print("n: " + str(self.n))
+		#print("m: " + str(self.m))
+		#print("Block size: " + str(self.blockSize))
+		#print("Record size: " + str(self.recordSize))
+		#print("Field size: " + str(self.fieldSize))
+		#print("Uses strings for key values: " + str(self.strKeys))
+		#print("Number of records: " + str(self.numRecords))
+		#print("Number of records deleted: " + str(self.numRecordsDeleted))
+		#print("BFR: " + str(self.bfr))
+		#print("Distinct values: " + str(self.numRecords))		
 			
 	# takes two boolean arguments
 	# time: print time to complete each operation
