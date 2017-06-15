@@ -2,13 +2,14 @@ from Record import *
 
 class ExtendibleBlock:
 
-	def __init__(self, size, recordSize, fieldSize, bfr, depthSize, data):
+	def __init__(self, size, recordSize, fieldSize, bfr, depthSize, strKeys, data):
 		self.size = size
 		# size of entire record (including hashing field)
 		self.recordSize = recordSize
 		self.fieldSize = fieldSize
 		self.bfr = bfr
 		self.data = data
+		self.strKeys = strKeys
 		self.depthSize = depthSize
 
 	def hasSpace(self):

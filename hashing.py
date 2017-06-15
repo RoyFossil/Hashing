@@ -32,7 +32,7 @@ def initStatic():
 					break
 				else:
 					print("Please make a valid selection (Y or N)")
-			return StaticlyHashedFile(blockSize, recordSize, fieldSize, fileSize, strKeys, path)
+			return StaticlyHashedFile(blockSize, recordSize, fieldSize, fileSize, strKeys, None, path)
 
 def initExtendible():
 	while True:
@@ -44,6 +44,9 @@ def initExtendible():
 			print("Please enter all sizes in bytes.")
 			blockSize = int(input("Enter the block size:  "))
 			recordSize = int(input("Enter the record size:  "))
+	#print("Please enter all sizes in bytes.")
+	#blockSize = int(input("Enter the block size:  "))
+	#recordSize = int(input("Enter the record size:  "))
 			while recordSize > blockSize:	
 				print("Record size must be smaller than block size")
 				recordSize = int(input("Enter the record size:  "))
@@ -52,10 +55,19 @@ def initExtendible():
 				print("Field size must be smaller than record size")
 				fieldSize = int(input("Enter the field size:  "))
 			path = input("Enter the path and name of the file:  ")
-			return ExtendibleHashedFile(blockSize, recordSize, fieldSize, path, None)
+			while True:
+				choice = input("Will your hashing field be of type string? (Y/N) ")
+				if choice == 'Y' or choice == 'y':
+					strKeys = True
+					break
+				elif choice == 'N' or choice == 'n':
+					strKeys = False
+					break
+				else:
+					print("Please make a valid selection (Y or N)")
+			return ExtendibleHashedFile(blockSize, recordSize, fieldSize, path, strKeys, None)
 		else:
 			print("Please make a valid selection (N or E)")
-
 
 def initLinear():
 	while True:
