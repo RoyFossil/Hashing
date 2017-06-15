@@ -88,7 +88,6 @@ class ExtendibleHashedFile:
 			f.write(self.numRecordsDeleted.to_bytes(3, byteorder='big'))
 			f.write(self.bfr.to_bytes(1, byteorder='big'))
 			f.write(self.numRecords.to_bytes(6, byteorder='big'))
-		
 	
 	def h1(self, value):
 		return value % 32
