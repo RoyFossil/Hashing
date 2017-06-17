@@ -1,9 +1,10 @@
 from Record import *
 
-class Block: 
+class LinearBlock: 
 	
-	def __init__(self, size, recordSize, fieldSize, bfr, strKeys, data):
+	def __init__(self, size, pointerSize, recordSize, fieldSize, bfr, strKeys, data):
 		self.size = size
+		self.pointerSize = pointerSize
 		# size of entire record (including hashing field)
 		self.recordSize = recordSize
 		self.fieldSize = fieldSize
@@ -70,6 +71,12 @@ class Block:
 		records = self.getAllRecords()
 		for record in records:
 			if record.getHashValue() == value:
+				return record
+	
+	def getRecordWithValueInclDeleted(self, value):
+		records = self.getAllRecordsInclDeleted()
+		for record in records:
+			if record.getHashValueEvenIfDeleted() == value:
 				return record
 	
 	def getRecordWithValueLoc(self, value):
