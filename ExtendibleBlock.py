@@ -28,6 +28,7 @@ class ExtendibleBlock:
 	# return pointer value
 	def getLocalDepth(self):
 		return int.from_bytes(self.data[(-1*self.depthSize):], byteorder='big')
+		
 	#returns boolean value
 	def isEmpty(self):
 		for recNum in range(0, self.bfr):
