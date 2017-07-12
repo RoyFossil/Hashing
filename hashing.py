@@ -62,7 +62,17 @@ def initExtendible():
 					break
 				else:
 					print("Please make a valid selection (Y or N)")
-			return ExtendibleHashedFile(blockSize, recordSize, fieldSize, path, strKeys, None)
+			while True:
+				choice = input("Will your hashing field be a key field? (Y/N) ")
+				if choice == 'Y' or choice == 'y':
+					nonKey = False
+					break
+				elif choice == 'N' or choice == 'n':
+					nonKey = True
+					break
+				else:
+					print("Please make a valid selection (Y or N)")
+			return ExtendibleHashedFile(blockSize, recordSize, fieldSize, path, strKeys, nonKey, None)
 		else:
 			print("Please make a valid selection (N or E)")
 
@@ -139,17 +149,20 @@ def menu(file, type):
 				keyVal = int(keyVal)
 			file.undelete(keyVal)
 		elif choice == '6':
-			while True:
-				withHeader = input("Would you like to display the file header? (Y/N) ")
-				if withHeader == 'Y' or withHeader == 'y':
-					withHeader = True
-					break
-				elif withHeader == 'N' or withHeader == 'n':
-					withHeader = False
-					break
-				else:
-					print("Please make a valid selection (Y or N)")
-			file.display(withHeader)
+			if type == "Extendible":
+				extendibleDisplay(file)
+			else:
+				while True:
+					withHeader = input("Would you like to display the file header? (Y/N) ")
+					if withHeader == 'Y' or withHeader == 'y':
+						withHeader = True
+						break
+					elif withHeader == 'N' or withHeader == 'n':
+						withHeader = False
+						break
+					else:
+						print("Please make a valid selection (Y or N)")
+				file.display(withHeader)
 		elif choice == '7':
 			print("There are two options for printing statistics.")
 			print("Print times will display the amount of time a function takes to execute.")
@@ -198,6 +211,47 @@ def chooseScheme():
 		else:
 			print("Please make a valid selection (S, E, or L)")
 
+def extendibleDisplay(file):
+	while True:
+		print("Choose a display option:")
+		print("     1: One specific block")
+		print("     2: Range of blocks")
+		print("     3: Whole File")
+		choice = input("")
+		if choice == '1':
+			print("Input the block number to display.")
+			print("Recall that blocks 0 and 1 are reserved for file metadata")
+			blockNo = int(input(""))
+			if blockNo == 0:
+				file.printFirstHeaderBlock()
+			elif blockNo == 1:
+				file.printDirectory()
+			else:
+				print("")
+				file.displayBlock(blockNo)
+			return
+		elif choice == '2':
+			print("Recall that blocks 0 and 1 are reserved for metadata")
+			startBlockNo = int(input("Input the starting block number to display:  "))
+			endBlockNo = int(input("Input the ending block number to display:  "))
+			file.displayRange(startBlockNo, endBlockNo)
+			return
+		elif choice == '3':
+			while True:
+				withHeader = input("Would you like to display the file header? (Y/N) ")
+				if withHeader == 'Y' or withHeader == 'y':
+					withHeader = True
+					break
+				elif withHeader == 'N' or withHeader == 'n':
+					withHeader = False
+					break
+				else:
+					print("Please make a valid selection (Y or N)")
+			file.display(withHeader)
+			return
+		else:
+			print("Please make a valid selection (1-3)")
+	
 while True:
 	fileAndType = chooseScheme()
 	file = fileAndType["file"]

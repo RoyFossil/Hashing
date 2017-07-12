@@ -4,7 +4,7 @@ import math
 from timeit import default_timer as timer
 class ExtendibleHashedFile:
 
-	def __init__(self, blockSize, recordSize, fieldSize, fileLoc, strKeys, readFileArgs):
+	def __init__(self, blockSize, recordSize, fieldSize, fileLoc, strKeys, nonKey, readFileArgs):
 		self.file = fileLoc
 		self.blockSize = blockSize
 		self.strKeys = strKeys
@@ -17,23 +17,27 @@ class ExtendibleHashedFile:
 		self.nextAvailableBucket = 3
 		self.times = False
 		self.workings = False
+		self.nonKey = nonKey
+		if nonKey:
+			self.overflow = self.fileLoc + "_overflow"
 		
 		if readFileArgs is None:
 			self.numRecords = 0
 			self.numRecordsDeleted = 0
-			self.Directory = {}
-			self.Directory[""] = 2
+			self.Directory = {"": 2}
 			# truncates the file
 			with open(self.file, 'wb') as f:
 				f.seek(self.blockSize*2)
 				f.write(bytearray(self.blockSize))
 				# set local depth to 0
 				f.seek(self.blockSize*3 - self.depthSize)
-				# update local depth value
 				f.write((0).to_bytes(self.depthSize, byteorder='big'))
+			if nonKey:
+				open(self.overflow, 'wb').close()
 			self.writeFirstHeaderBlock()
 			self.writeDirectoryToHeader();
 		else:
+			self.globalDepth = readFileArgs["globalDepth"]
 			self.numRecords = readFileArgs["numRecords"]
 			self.numRecordsDeleted = readFileArgs["numRecordsDeleted"]
 			self.Directory = readFileArgs["Directory"]
@@ -50,11 +54,15 @@ class ExtendibleHashedFile:
 			recordSize = int.from_bytes(f.read(3), byteorder='big')
 			fieldSize = int.from_bytes(f.read(2), byteorder='big')
 			extraFileArgs["numRecords"] = int.from_bytes(f.read(3), byteorder='big')
-			extraFileArgs["numRecordsDeleted"] = int.from_bytes(f.read(3), byteorder='big')
+			extraFileArgs["numRecordsDeleted"] = int.from_bytes(f.read(2), byteorder='big')
 			if f.read(1) == b'\x01':
 				strKeys = True
 			else:
 				strKeys = False
+			if f.read(1) == b'\x01':
+				nonKey = True
+			else:
+				nonKey = False
 			#read the directory from the second header block
 			f.seek(blockSize)
 			if extraFileArgs["globalDepth"] == 0:
@@ -67,7 +75,7 @@ class ExtendibleHashedFile:
 					value = int.from_bytes(f.read(1), byteorder='big')
 					theDirectory[formattedKey] = value
 		extraFileArgs["Directory"] = theDirectory
-		return cls(blockSize, recordSize, fieldSize, fileLoc, strKeys, extraFileArgs)
+		return cls(blockSize, recordSize, fieldSize, fileLoc, strKeys, nonKey, extraFileArgs)
 		
 	def writeFirstHeaderBlock(self):
 		with open(self.file, 'r+b') as f:
@@ -79,8 +87,12 @@ class ExtendibleHashedFile:
 			f.write(self.recordSize.to_bytes(3, byteorder='big'))
 			f.write(self.fieldSize.to_bytes(2, byteorder='big'))
 			f.write(self.numRecords.to_bytes(3, byteorder='big'))
-			f.write(self.numRecordsDeleted.to_bytes(3, byteorder='big'))
+			f.write(self.numRecordsDeleted.to_bytes(2, byteorder='big'))
 			if self.strKeys:
+				f.write(b'\x01')
+			else:
+				f.write(b'\x00')
+			if self.nonKey:
 				f.write(b'\x01')
 			else:
 				f.write(b'\x00')
@@ -99,12 +111,14 @@ class ExtendibleHashedFile:
 		with open(self.file, 'r+b') as f:
 			f.seek(self.blockSize)
 			f.write(bytearray(self.blockSize))
-			for key in self.Directory.keys():
-				if f.tell() < self.blockSize * 2:
-					f.write(int(key,2).to_bytes(1, byteorder = 'big'))
-					f.write(self.Directory[key].to_bytes(1, byteorder = 'big'))
-				else:
-					print("Directory is too large to be written to one block")
+			f.seek(self.blockSize)
+			if len(self.Directory.keys()) > 1:
+				for key in self.Directory.keys():
+					if f.tell() < self.blockSize * 2:
+						f.write(int(key,2).to_bytes(1, byteorder = 'big'))
+						f.write(self.Directory[key].to_bytes(1, byteorder = 'big'))
+					else:
+						print("Directory is too large to be written to one block")
 	
 	def updateGlobalDepthInHeader(self):
 		with open(self.file, 'r+b') as f:
@@ -409,6 +423,16 @@ class ExtendibleHashedFile:
 					linesWritten+=1
 		print(" "*tabSize + "-" * (1 + self.recordSize + 1))
 	
+	def displayRange(self, start, end):
+		with open(self.file, 'r+b', buffering=self.blockSize) as f:
+			if start > end:
+				temp = end
+				end = start
+				start = temp
+			for bucket in range(start, end + 1):
+				self.displayBlock(bucket)
+				
+	
 	def printTabOrBucketNum(self, tabSize, linesWritten, labelLoc, bucket, blockLabel):
 		if(linesWritten == labelLoc - 1):
 			print(" "*math.ceil((tabSize-len(str(blockLabel)))/2) + str(blockLabel) + " "*math.floor((tabSize-len(str(blockLabel)))/2), end="")
@@ -428,6 +452,10 @@ class ExtendibleHashedFile:
 	
 		
 	def displayHeader(self):
+		self.printFirstHeaderBlock()
+		self.printDirectory()
+		
+	def printFirstHeaderBlock(self):
 		print("Block size: " + str(self.blockSize))
 		print("Record size: " + str(self.recordSize))
 		print("Field size: " + str(self.fieldSize))
@@ -436,7 +464,7 @@ class ExtendibleHashedFile:
 		print("Number of records deleted: " + str(self.numRecordsDeleted))
 		print("BFR: " + str(self.bfr))
 		print("Distinct values: " + str(self.numRecords))
-		self.printDirectory()
+		print("Global depth: " + str(self.globalDepth))
 	
 	def printDirectory(self):
 		sortedKeys = sorted(self.Directory.keys())
