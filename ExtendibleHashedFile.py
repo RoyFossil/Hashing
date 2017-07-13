@@ -119,7 +119,10 @@ class ExtendibleHashedFile:
 						f.write(self.Directory[key].to_bytes(1, byteorder = 'big'))
 					else:
 						print("Directory is too large to be written to one block")
-	
+			elif len(self.Directory.keys()) == 1:
+				f.seek(self.blockSize + 1)
+				f.write(self.Directory[""].to_bytes(1, byteorder = 'big'))
+				
 	def updateGlobalDepthInHeader(self):
 		with open(self.file, 'r+b') as f:
 			f.seek(0)
@@ -473,7 +476,9 @@ class ExtendibleHashedFile:
 			print("-"*15)
 			print("|"+str(sortedKeys[i])+" "*(6-len(str(sortedKeys[i])))+"|"+ str(self.Directory[sortedKeys[i]])+" "*(6-len(str(self.Directory[sortedKeys[i]])))+"|")
 		print("-"*15+"\n")
-			
+	
+	
+		
 	# takes two boolean arguments
 	# time: print time to complete each operation
 	# working: print navigation and other info

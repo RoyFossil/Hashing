@@ -36,7 +36,7 @@ def initStatic():
 
 def initExtendible():
 	while True:
-		choice = input("Would you like to create a (N)ew file or use and (E)xisting one?  ")
+		choice = input("Would you like to create a (N)ew file, use and (E)xisting one, or build from a text (F)ile?  ")
 		if choice == 'E' or choice == 'e':
 			path = input("Enter the file location:  ")
 			return ExtendibleHashedFile.fromExistingFile(path)
@@ -73,8 +73,15 @@ def initExtendible():
 				else:
 					print("Please make a valid selection (Y or N)")
 			return ExtendibleHashedFile(blockSize, recordSize, fieldSize, path, strKeys, nonKey, None)
+		elif choice == 'F' or choice == 'f':
+			print("The text file must be correctly formatted and include all information in the correct order.")
+			fileLayout = input("Would you like to see an example of the file layout? (Y)es or any other input for no ")
+			if fileLayout == 'Y' or fileLayout == 'y':
+				displayTextFileLayout();
+			path = input("Enter the location of the text file:  ")
+			return createExtendibleFromTxt(path)
 		else:
-			print("Please make a valid selection (N or E)")
+			print("Please make a valid selection (N, E, or F)")
 
 def initLinear():
 	while True:
@@ -217,6 +224,7 @@ def extendibleDisplay(file):
 		print("     1: One specific block")
 		print("     2: Range of blocks")
 		print("     3: Whole File")
+		print("     4: Directory")
 		choice = input("")
 		if choice == '1':
 			print("Input the block number to display.")
@@ -249,10 +257,67 @@ def extendibleDisplay(file):
 					print("Please make a valid selection (Y or N)")
 			file.display(withHeader)
 			return
+		elif choice == '4':
+			file.printDirectory();
+			return
 		else:
-			print("Please make a valid selection (1-3)")
-	
+			print("Please make a valid selection (1-4)")
+
+def displayTextFileLayout():
+	print("//Any lines starting with // are simply for describing the file layout and should be omitted.")
+	print("//The first section of the file will contain the file metadata")
+	print("//The data needed includes: Block size, record size, field size, string keys?, key field?, and file path")
+	print("//These data values must come in that order.  An example is below")
+	print("256")
+	print("100")
+	print("10")
+	print("N")
+	print("Y")
+	print("C:/JO/test")
+	print("//The next section of the file contains all of the record data")
+	print("//The hashing field value will come first followed by the data to be stored with it")
+	print("//The default separator is a single space")
+	print("123 test123")
+	print("234 test234")
+	print("345 test345")
+
+def validLoc(loc):
+	return True
+
+def createExtendibleFromTxt(datFile):
+	with open(datFile) as f:
+		content = f.read().splitlines()
+		blockSize = int(content[0])
+		recordSize = int(content[1])
+		fieldSize = int(content[2])
+		if content[3] == "Y" or content[3] == "y":
+			strKeys = True
+		else:
+			strKeys = False
+		if content[4] == "N" or content[4] == "n":
+			nonKey = True
+		else:
+			nonKey = False
+		filePath = content[5]
+		file = ExtendibleHashedFile(blockSize, recordSize, fieldSize, filePath, strKeys, nonKey, None)
+		for index in range(6, len(content)):
+			arrayified = content[index].split(" ")
+			hashingValue = arrayified.pop(0)
+			if not strKeys:
+				hashingValue = int(hashingValue)
+			data = " ".join(arrayified)
+			file.insert(hashingValue, data)
+		return file
+
+def makeFile():
+	with open("C:/RF/wut.txt", 'w') as f:
+		f.write("1024\n100\n10\nN\nY\n")
+		for data in range(1, 10000):
+			rand = random.randint(1, 1000)
+			f.write(str(rand) + " test" + str(rand) +"\n")
+		
 while True:
+	#makeFile()
 	fileAndType = chooseScheme()
 	file = fileAndType["file"]
 	menu(file, fileAndType["type"])
