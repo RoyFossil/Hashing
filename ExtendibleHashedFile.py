@@ -128,6 +128,16 @@ class ExtendibleHashedFile:
 			f.seek(0)
 			f.write(self.globalDepth.to_bytes(1, byteorder='big'))
 	
+	def updateNumRecordsInHeader(self):
+		with open(self.file, 'r+b') as f:
+			f.seek(somewhere)
+			f.write(self.numRecords.to_bytes(1, byteorder='big'))
+	
+	def updateNumRecordsDeletedInHeader(self):
+		with open(self.file, 'r+b') as f:
+			f.seek(somewhereelse)
+			f.write(self.numRecordsDeleted.to_bytes(1, byteorder='big'))
+	
 	def h1(self, value):
 		return value % 32
 	
@@ -181,6 +191,8 @@ class ExtendibleHashedFile:
 				f.seek(self.blockSize*(bucket) + self.recordSize*space)
 				#slot data in there boiiiiii
 				f.write(formattedRecord.bytes)
+				self.numRecords += 1
+				self.updateNumRecordsInHeader()
 				if self.workings:
 					print("The record was inserted at record number " + str(space) + " in bucket " + str(bucket) + ".")
 			
