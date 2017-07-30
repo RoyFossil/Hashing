@@ -208,6 +208,7 @@ def chooseScheme():
 		print("   (S)tatic Hashing")
 		print("   (E)xtendible Hashing")
 		print("   (L)inear Hashing")
+		print("    or (Q)uit")
 		choice = input("")
 		if choice == 'S' or choice == 's':
 			return {"file": initStatic(), "type": "Static"}
@@ -215,6 +216,8 @@ def chooseScheme():
 			return {"file": initExtendible(), "type": "Extendible"}
 		elif choice == 'L' or choice == 'l':
 			return {"file": initLinear(), "type": "Linear"}
+		elif choice == 'Q' or choice == 'q':
+			return
 		else:
 			print("Please make a valid selection (S, E, or L)")
 
@@ -319,8 +322,11 @@ def makeFile():
 while True:
 	#makeFile()
 	fileAndType = chooseScheme()
-	file = fileAndType["file"]
-	menu(file, fileAndType["type"])
+	if(fileAndType):
+		file = fileAndType["file"]
+		menu(file, fileAndType["type"])
+	else:
+		break
 
 
 

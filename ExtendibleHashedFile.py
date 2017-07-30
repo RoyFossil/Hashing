@@ -50,11 +50,11 @@ class ExtendibleHashedFile:
 		with open(fileLoc, 'r+b') as f:
 			f.seek(0)
 			extraFileArgs["globalDepth"] = int.from_bytes(f.read(1), byteorder='big')
-			blockSize = int.from_bytes(f.read(3), byteorder='big')
-			recordSize = int.from_bytes(f.read(3), byteorder='big')
+			blockSize = int.from_bytes(f.read(4), byteorder='big')
+			recordSize = int.from_bytes(f.read(4), byteorder='big')
 			fieldSize = int.from_bytes(f.read(2), byteorder='big')
-			extraFileArgs["numRecords"] = int.from_bytes(f.read(3), byteorder='big')
-			extraFileArgs["numRecordsDeleted"] = int.from_bytes(f.read(2), byteorder='big')
+			extraFileArgs["numRecords"] = int.from_bytes(f.read(4), byteorder='big')
+			extraFileArgs["numRecordsDeleted"] = int.from_bytes(f.read(4), byteorder='big')
 			if f.read(1) == b'\x01':
 				strKeys = True
 			else:
@@ -79,15 +79,16 @@ class ExtendibleHashedFile:
 		
 	def writeFirstHeaderBlock(self):
 		with open(self.file, 'r+b') as f:
+			#21 bytes
 			f.seek(0)
 			f.write(bytearray(self.blockSize))
 			f.seek(0)
 			f.write(self.globalDepth.to_bytes(1, byteorder='big'))
-			f.write(self.blockSize.to_bytes(3, byteorder='big'))
-			f.write(self.recordSize.to_bytes(3, byteorder='big'))
+			f.write(self.blockSize.to_bytes(4, byteorder='big'))
+			f.write(self.recordSize.to_bytes(4, byteorder='big'))
 			f.write(self.fieldSize.to_bytes(2, byteorder='big'))
-			f.write(self.numRecords.to_bytes(3, byteorder='big'))
-			f.write(self.numRecordsDeleted.to_bytes(2, byteorder='big'))
+			f.write(self.numRecords.to_bytes(4, byteorder='big'))
+			f.write(self.numRecordsDeleted.to_bytes(4, byteorder='big'))
 			if self.strKeys:
 				f.write(b'\x01')
 			else:
@@ -96,16 +97,6 @@ class ExtendibleHashedFile:
 				f.write(b'\x01')
 			else:
 				f.write(b'\x00')
-	
-	def writeSecondHeaderBlock(self):
-		with open(self.file, 'r+b') as f:
-			f.seek(self.blockSize)
-			f.write(bytearray(self.blockSize))
-			f.seek(self.blockSize)
-			f.write(self.numRecords.to_bytes(6, byteorder='big'))
-			f.write(self.numRecordsDeleted.to_bytes(3, byteorder='big'))
-			f.write(self.bfr.to_bytes(1, byteorder='big'))
-			f.write(self.numRecords.to_bytes(6, byteorder='big'))
 		
 	def writeDirectoryToHeader(self):
 		with open(self.file, 'r+b') as f:
@@ -130,13 +121,13 @@ class ExtendibleHashedFile:
 	
 	def updateNumRecordsInHeader(self):
 		with open(self.file, 'r+b') as f:
-			f.seek(somewhere)
-			f.write(self.numRecords.to_bytes(1, byteorder='big'))
+			f.seek(11)
+			f.write(self.numRecords.to_bytes(4, byteorder='big'))
 	
 	def updateNumRecordsDeletedInHeader(self):
 		with open(self.file, 'r+b') as f:
-			f.seek(somewhereelse)
-			f.write(self.numRecordsDeleted.to_bytes(1, byteorder='big'))
+			f.seek(15)
+			f.write(self.numRecordsDeleted.to_bytes(4, byteorder='big'))
 	
 	def h1(self, value):
 		return value % 32
@@ -150,7 +141,10 @@ class ExtendibleHashedFile:
 			
 	def getLeftmostBits(self, value, count):
 		if count>0:
-			return self.getBinary(self.h1(value), 5)[:count]
+			bin = self.getBinary(self.h1(value), 5)
+			lmb = bin[:count]
+			print("Value: " + str(value) + ". bin: " + str(bin) + ". lmb: " + str(lmb))
+			return lmb
 		else:
 			return ""
 		
@@ -203,6 +197,8 @@ class ExtendibleHashedFile:
 				f.seek(self.blockSize*(bucket))
 				f.write(bytearray(self.blockSize))
 				self.split(f, theBlock, formattedRecord, value)
+				self.numRecords += 1
+				self.updateNumRecordsInHeader()
 		end = timer()		
 		if self.times:
 			print("Insert time: " + str((end-start)*1000) + "ms")
@@ -251,6 +247,7 @@ class ExtendibleHashedFile:
 			if whichBucket == next:
 				new.append(record)
 		
+		needAnotherSplit = False
 		#to put records in thier appropraite bucket after hash functions
 		count=0
 		for record in orig:
@@ -259,7 +256,8 @@ class ExtendibleHashedFile:
 				mainFile.seek(self.blockSize*(self.Directory[self.padVal(curr)]) + self.recordSize*(count - 1))
 				mainFile.write(record.bytes)
 			else:
-				#print("overflow while splitting")
+				if self.workings:
+					print("Collision while splitting")
 				needAnotherSplit=True
 		if self.workings and count:
 			print(str(count) + " records rehashed to bucket " + str(bucket))
@@ -271,7 +269,8 @@ class ExtendibleHashedFile:
 				mainFile.seek(self.blockSize*(self.Directory[self.padVal(next)]) + self.recordSize*(count - 1))
 				mainFile.write(record.bytes)
 			else:
-				#print("overflow while splitting")
+				if self.workings:
+					print("Collision while splitting")
 				needAnotherSplit=True
 		if self.workings and count:
 			print(str(count) + " records rehashed to bucket " + str(self.nextAvailableBucket))
@@ -286,18 +285,28 @@ class ExtendibleHashedFile:
 		#print(self.Directory)
 		self.writeDirectoryToHeader()
 		self.updateGlobalDepthInHeader()
-		if needsAnotherSplit:
+		if needAnotherSplit:
+			print("Another split is needed ", end="")
 			if len(orig) > len(new):
-				value = curr
+				print("in bucket " + str(self.Directory[self.padVal(curr)]))
 				aRecord = orig[len(orig)-1]
-				mainFile.seek(self.blockSize*(self.Directory[self.padVal(curr)]))
+				value = aRecord.getHashValue()
+				blockLoc = self.blockSize*(self.Directory[self.padVal(curr)])
+				mainFile.seek(blockLoc)
 				theBlock = self.makeBlock(mainFile.read(self.blockSize))
+				mainFile.seek(blockLoc)
+				mainFile.write(bytearray(self.blockSize))
 			else:
-				value = next
+				print("in bucket " + str(self.Directory[self.padVal(next)]))
 				aRecord = new[len(new)-1]
-				mainFile.seek(self.blockSize*(self.Directory[self.padVal(next)]))
+				value = aRecord.getHashValue()
+				blockLoc = self.blockSize*(self.Directory[self.padVal(next)])
+				mainFile.seek(blockLoc)
 				theBlock = self.makeBlock(mainFile.read(self.blockSize))
-			self.split(f, theBlock, aRecord, value)
+				mainFile.seek(blockLoc)
+				mainFile.write(bytearray(self.blockSize))
+				
+			self.split(mainFile, theBlock, aRecord, value)
 	
 	def padVal(self, val):
 		while len(val) < self.globalDepth:
