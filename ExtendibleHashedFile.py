@@ -482,7 +482,7 @@ class ExtendibleHashedFile:
 		
 	def displayHeader(self):
 		self.printFirstHeaderBlock()
-		self.printDirectory(True)
+		self.printDirectory()
 		
 	def printFirstHeaderBlock(self):
 		print("Block size: " + str(self.blockSize))
@@ -500,17 +500,8 @@ class ExtendibleHashedFile:
 		print("\n   Directory   ")
 		for i in range(0, len(sortedKeys)):
 			print("-"*15)
-			print("|"+str(sortedKeys[i])+" "*(6-len(str(sortedKeys[i])))+"|"+ str(self.Directory[sortedKeys[i]])+" "*(6-len(str(self.Directory[sortedKeys[i]])))+"|", end="")
-			if(numBytes):
-				#print number of bytes
-				print("    Key: 1 byte,  Value: 1 byte")
-			else:
-				print()
-		print("-"*15)
-		if(numBytes):
-			print("Total directory size: " + str(2*len(sortedKeys)) + " bytes\n")
-		else:
-			print()
+			print("|"+str(sortedKeys[i])+" "*(6-len(str(sortedKeys[i])))+"|"+ str(self.Directory[sortedKeys[i]])+" "*(6-len(str(self.Directory[sortedKeys[i]])))+"|")
+		print("-"*15+"\n")
 	
 	
 		
