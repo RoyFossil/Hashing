@@ -259,7 +259,7 @@ def extendibleDisplay(file):
 			file.display(withHeader)
 			return
 		elif choice == '4':
-			file.printDirectory(true);
+			file.printDirectory(True);
 			return
 		else:
 			print("Please make a valid selection (1-4)")
