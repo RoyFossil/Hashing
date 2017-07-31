@@ -52,7 +52,7 @@ class ExtendibleHashedFile:
 		with open(fileLoc, 'r+b') as f:
 			f.seek(0)
 			extraFileArgs["globalDepth"] = int.from_bytes(f.read(1), byteorder='big')
-			blockSize = int.from_bytes(f.read(4), byteorder='big')
+			blockSize = int.from_bytes(f.read(4), byteorder='big') - 1
 			recordSize = int.from_bytes(f.read(4), byteorder='big')
 			fieldSize = int.from_bytes(f.read(2), byteorder='big')
 			extraFileArgs["numRecords"] = int.from_bytes(f.read(4), byteorder='big')
