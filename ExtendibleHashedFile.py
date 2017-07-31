@@ -12,7 +12,7 @@ class ExtendibleHashedFile:
 		# record size supplied by user should include the hash field size and deletion marker
 		self.recordSize = recordSize
 		self.fieldSize = fieldSize
-		self.depthSize = 4
+		self.depthSize = 1
 		self.bfr = math.floor((blockSize-self.depthSize)/(self.recordSize))
 		self.globalDepth = 0
 		self.nextAvailableBucket = 3
