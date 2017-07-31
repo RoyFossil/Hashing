@@ -42,7 +42,7 @@ def initExtendible():
 			return ExtendibleHashedFile.fromExistingFile(path)
 		elif choice == 'N' or choice == 'n':
 			print("Please enter all sizes in bytes.")
-			blockSize = int(input("Enter the block size:  "))
+			blockSize = int(input("Enter the block size (note that 1 byte will be added for local depth storage):  "))
 			recordSize = int(input("Enter the record size:  "))
 			while recordSize > blockSize:	
 				print("Record size must be smaller than block size")
