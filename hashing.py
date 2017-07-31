@@ -233,10 +233,8 @@ def extendibleDisplay(file):
 			print("Input the block number to display.")
 			print("Recall that blocks 0 and 1 are reserved for file metadata")
 			blockNo = int(input(""))
-			if blockNo == 0:
+			if blockNo == 0 or blockNo == 1:
 				file.printFirstHeaderBlock()
-			elif blockNo == 1:
-				file.printDirectory()
 			else:
 				print("")
 				file.displayBlock(blockNo)
@@ -261,7 +259,7 @@ def extendibleDisplay(file):
 			file.display(withHeader)
 			return
 		elif choice == '4':
-			file.printDirectory();
+			file.printDirectory(true);
 			return
 		else:
 			print("Please make a valid selection (1-4)")
