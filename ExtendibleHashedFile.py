@@ -495,7 +495,7 @@ class ExtendibleHashedFile:
 		print("Distinct values: " + str(self.numRecords))
 		print("Global depth: " + str(self.globalDepth))
 	
-	def printDirectory(self, numBytes):
+	def printDirectory(self):
 		sortedKeys = sorted(self.Directory.keys())
 		print("\n   Directory   ")
 		for i in range(0, len(sortedKeys)):
