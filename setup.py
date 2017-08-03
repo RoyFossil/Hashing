@@ -1,4 +1,8 @@
-from distutils.core import setup
-import py2exe
+import sys
+from cx_Freeze import setup, Executable
 
-setup(console=['hashing.py'])
+setup(
+	name = "Hashing",
+	version = "2.2",
+	description = "Extendible Hashing",
+	executables = [Executable("hashing.py", base = "Console")])
