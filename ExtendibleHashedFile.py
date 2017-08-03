@@ -8,12 +8,13 @@ class ExtendibleHashedFile:
 		self.file = fileLoc
 		self.directoryFile = fileLoc + "_directory"
 		self.depthSize = 1
+		self.usableBlockSpace = blockSize
 		self.blockSize = blockSize + self.depthSize
 		self.strKeys = strKeys
 		# record size supplied by user should include the hash field size and deletion marker
 		self.recordSize = recordSize
 		self.fieldSize = fieldSize
-		self.bfr = math.floor(blockSize/self.recordSize)
+		self.bfr = math.floor(self.usableBlockSpace/self.recordSize)
 		self.globalDepth = 0
 		self.nextAvailableBucket = 3
 		self.times = False
@@ -52,7 +53,7 @@ class ExtendibleHashedFile:
 		with open(fileLoc, 'r+b') as f:
 			f.seek(0)
 			extraFileArgs["globalDepth"] = int.from_bytes(f.read(1), byteorder='big')
-			blockSize = int.from_bytes(f.read(4), byteorder='big') - 1
+			blockSize = int.from_bytes(f.read(4), byteorder='big')
 			recordSize = int.from_bytes(f.read(4), byteorder='big')
 			fieldSize = int.from_bytes(f.read(2), byteorder='big')
 			extraFileArgs["numRecords"] = int.from_bytes(f.read(4), byteorder='big')
@@ -86,7 +87,7 @@ class ExtendibleHashedFile:
 			f.write(bytearray(self.blockSize))
 			f.seek(0)
 			f.write(self.globalDepth.to_bytes(1, byteorder='big'))
-			f.write(self.blockSize.to_bytes(4, byteorder='big'))
+			f.write(self.usableBlockSpace.to_bytes(4, byteorder='big'))
 			f.write(self.recordSize.to_bytes(4, byteorder='big'))
 			f.write(self.fieldSize.to_bytes(2, byteorder='big'))
 			f.write(self.numRecords.to_bytes(4, byteorder='big'))
@@ -485,7 +486,7 @@ class ExtendibleHashedFile:
 		self.printDirectory()
 		
 	def printFirstHeaderBlock(self):
-		print("Block size: " + str(self.blockSize))
+		print("Block size: " + str(self.usableBlockSpace))
 		print("Record size: " + str(self.recordSize))
 		print("Field size: " + str(self.fieldSize))
 		print("Uses strings for key values: " + str(self.strKeys))
@@ -493,11 +494,12 @@ class ExtendibleHashedFile:
 		print("Number of records deleted: " + str(self.numRecordsDeleted))
 		print("BFR: " + str(self.bfr))
 		print("Distinct values: " + str(self.numRecords))
-		print("Global depth: " + str(self.globalDepth))
+		#print("Global depth: " + str(self.globalDepth))
 	
 	def printDirectory(self):
 		sortedKeys = sorted(self.Directory.keys())
-		print("\n   Directory   ")
+		print("\nGlobal Depth: " + str(self.globalDepth))
+		print("   Directory   ")
 		for i in range(0, len(sortedKeys)):
 			print("-"*15)
 			print("|"+str(sortedKeys[i])+" "*(6-len(str(sortedKeys[i])))+"|"+ str(self.Directory[sortedKeys[i]])+" "*(6-len(str(self.Directory[sortedKeys[i]])))+"|")
